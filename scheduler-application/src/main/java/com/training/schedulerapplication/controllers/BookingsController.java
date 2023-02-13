@@ -67,7 +67,7 @@ public class BookingsController {
             return ResponseEntity.badRequest().body("Not all booking fields were filled. Cannot update. Use a PATCH request instead");
         } else{
 
-            Booking currentBooking = bookingRepository.getById(id);
+            Booking currentBooking = bookingRepository.findById(id).orElseThrow(() -> new BookingNotFoundException(id));
             BeanUtils.copyProperties(booking, currentBooking, "booking_id"); // Don't override primary key
             bookingRepository.saveAndFlush(currentBooking);
             Link newLink = linkTo(methodOn(BookingsController.class).get(id)).withSelfRel();
@@ -82,7 +82,7 @@ public class BookingsController {
 
     @RequestMapping(name = "{id}", method = RequestMethod.PATCH)
     public ResponseEntity<?> patchUpdate(@PathVariable Long id, @RequestBody Booking booking){
-        Booking currentBooking = bookingRepository.getById(id);
+        Booking currentBooking = bookingRepository.findById(id).orElseThrow(() -> new BookingNotFoundException(id));
         if(booking.getDescription() != null){
             currentBooking.setDescription(booking.getDescription());
         }
@@ -104,5 +104,14 @@ public class BookingsController {
         } catch (URISyntaxException e){
             return ResponseEntity.badRequest().body("Unable to update booking with id: " + id);
         }
+    }
+
+    @RequestMapping(name = "{id}", method = RequestMethod.DELETE)
+    public ResponseEntity<?> delete(@RequestParam Long id){
+        bookingRepository.deleteById(id);
+        return bookingRepository.findById(id).map(booking -> {
+            bookingRepository.deleteById(id);
+            return ResponseEntity.noContent().build();
+        }).orElseThrow(() -> new BookingNotFoundException(id));
     }
 }

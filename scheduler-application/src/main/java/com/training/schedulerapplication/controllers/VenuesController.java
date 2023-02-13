@@ -1,16 +1,27 @@
 package com.training.schedulerapplication.controllers;
 
 import com.training.schedulerapplication.models.Booking;
+import com.training.schedulerapplication.models.Staff;
 import com.training.schedulerapplication.models.Venue;
 import com.training.schedulerapplication.repositories.BookingRepository;
 import com.training.schedulerapplication.repositories.VenueRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.repository.support.Repositories;
+import org.springframework.hateoas.CollectionModel;
+import org.springframework.hateoas.EntityModel;
+import org.springframework.hateoas.IanaLinkRelations;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
+
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
 
 @RestController
 @RequestMapping("/venues")
@@ -20,32 +31,51 @@ public class VenuesController {
     @Autowired
     private BookingRepository bookingRepository;
     @GetMapping
-    public List<Venue> venues(){
-        return venueRepository.findAll();
+    public ResponseEntity<CollectionModel<EntityModel<Venue>>> all(){
+        List<EntityModel<Venue>> venue = StreamSupport.stream(venueRepository.findAll().spliterator(), false) //
+                .map(currVenue -> EntityModel.of(currVenue, //
+                        linkTo(methodOn(BookingsController.class).get(currVenue.getVenueId())).withSelfRel(), //
+                        linkTo(methodOn(BookingsController.class).all()).withRel("venues"))).collect(Collectors.toList());
+        return ResponseEntity.ok(CollectionModel.of(venue, //
+                linkTo(methodOn(StaffController.class).all()).withSelfRel()));
     }
 
     @GetMapping
     @RequestMapping("{id}")
-    public Venue get(@PathVariable Long id){
-        return venueRepository.getById(id);
+    public ResponseEntity<EntityModel<Venue>> get(@PathVariable Long id){
+        return venueRepository.findById(id) //
+                .map(venue -> EntityModel.of(venue, //
+                        linkTo(methodOn(BookingsController.class).get(venue.getVenueId())).withSelfRel(), //
+                        linkTo(methodOn(BookingsController.class).all()).withRel("venues"))) //
+                .map(ResponseEntity::ok) //
+                .orElse(ResponseEntity.notFound().build());
     }
 
     @PostMapping
-    public Venue add(@RequestBody final Venue venue){
-        return venueRepository.saveAndFlush(venue);
+    public ResponseEntity<?> add(@RequestBody final Venue venue){
+        Venue newVenue =  venueRepository.saveAndFlush(venue);
+        EntityModel<Venue> venueResource = EntityModel.of(newVenue, linkTo(methodOn(BookingsController.class)
+                .get(newVenue.getVenueId())).withSelfRel());
+        try{
+            return ResponseEntity.created(new URI(venueResource.getRequiredLink(IanaLinkRelations.SELF).getHref())) //
+                    .body(venueResource);
+        } catch (URISyntaxException e){
+            return ResponseEntity.badRequest().body("Unable to create venue");
+        }
     }
 
-    //Maybe more RESTful than the other stuff I've done
+
     @RequestMapping(name = "{id}", method = RequestMethod.DELETE)
-    public ResponseEntity<String> delete(@RequestBody Long id){
+    public ResponseEntity<?> delete(@RequestBody Long id){
         //Can't delete venue if there is a booking there
         List<Booking> bookings = bookingRepository.findByVenueId(id);
-        if(bookings.size() == 0){
-            venueRepository.deleteById(id);
-            return ResponseEntity.ok("Delete successful");
+        if (bookings.size() == 0) { // venue not attached to any bookings
+            return venueRepository.findById(id).map(venue -> {
+                venueRepository.deleteById(id);
+                return ResponseEntity.noContent().build();
+            }).orElseThrow(() -> new VenueNotFoundException(id));
         } else {
-            return new ResponseEntity<>("Cannot delete a venue that has bookings attached", HttpStatus.EXPECTATION_FAILED);
+            throw new DeleteWithActiveVenueException(id);
         }
-
     }
 }

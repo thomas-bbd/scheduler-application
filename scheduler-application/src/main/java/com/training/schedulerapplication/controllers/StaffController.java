@@ -67,7 +67,6 @@ public class StaffController {
     public ResponseEntity<?> delete(@RequestParam Long id){
         List<Booking> bookings = bookingRepository.findByStaffId(id);
         if (bookings.size() == 0) { // staff member does not have any bookings
-            bookingRepository.deleteById(id);
             return staffRepository.findById(id).map(staff -> {
                 staffRepository.deleteById(id);
                 return ResponseEntity.noContent().build();
