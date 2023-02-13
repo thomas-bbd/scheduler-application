@@ -17,6 +17,7 @@ import java.util.List;
 public class VenuesController {
     @Autowired
     private VenueRepository venueRepository;
+    @Autowired
     private BookingRepository bookingRepository;
     @GetMapping
     public List<Venue> venues(){
@@ -29,15 +30,16 @@ public class VenuesController {
         return venueRepository.getById(id);
     }
 
-    @PutMapping
-    public Venue create(@RequestBody final Venue venue){
+    @PostMapping
+    public Venue add(@RequestBody final Venue venue){
         return venueRepository.saveAndFlush(venue);
     }
 
+    //Maybe more RESTful than the other stuff I've done
     @RequestMapping(name = "{id}", method = RequestMethod.DELETE)
     public ResponseEntity<String> delete(@RequestBody Long id){
         //Can't delete venue if there is a booking there
-        List<Booking> bookings = bookingRepository.findAllByVenue(id);
+        List<Booking> bookings = bookingRepository.findByVenueId(id);
         if(bookings.size() == 0){
             venueRepository.deleteById(id);
             return ResponseEntity.ok("Delete successful");

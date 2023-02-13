@@ -9,31 +9,31 @@ import javax.persistence.Id;
 public class Venue {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long venue_id;
-    private String builing_name;
-    private String room_name;
+    private Long venueId;
+    private String buildingName;
+    private String roomName;
 
-    public Long getVenue_id() {
-        return venue_id;
+    public Long getVenueId() {
+        return venueId;
     }
 
-    public void setVenue_id(Long venue_id) {
-        this.venue_id = venue_id;
+    public void setVenueId(Long venueId) {
+        this.venueId = venueId;
     }
 
-    public String getBuiling_name() {
-        return builing_name;
+    public String getBuildingName() {
+        return buildingName;
     }
 
-    public void setBuiling_name(String builing_name) {
-        this.builing_name = builing_name;
+    public void setBuildingName(String buildingName) {
+        this.buildingName = buildingName;
     }
 
-    public String getRoom_name() {
-        return room_name;
+    public String getRoomName() {
+        return roomName;
     }
 
-    public void setRoom_name(String room_name) {
-        this.room_name = room_name;
+    public void setRoomName(String roomName) {
+        this.roomName = roomName;
     }
 }

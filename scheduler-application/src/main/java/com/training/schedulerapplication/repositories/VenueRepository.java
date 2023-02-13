@@ -1,2 +1,7 @@
-package com.training.schedulerapplication.repositories;public class VenueRepository {
+package com.training.schedulerapplication.repositories;
+
+import com.training.schedulerapplication.models.Venue;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface VenueRepository extends JpaRepository<Venue, Long> {
 }

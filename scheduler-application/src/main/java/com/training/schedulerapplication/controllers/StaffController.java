@@ -2,8 +2,11 @@ package com.training.schedulerapplication.controllers;
 
 import com.training.schedulerapplication.models.Booking;
 import com.training.schedulerapplication.models.Staff;
+import com.training.schedulerapplication.repositories.BookingRepository;
 import com.training.schedulerapplication.repositories.StaffRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -13,6 +16,8 @@ import java.util.List;
 public class StaffController {
     @Autowired
     private StaffRepository staffRepository;
+    @Autowired
+    private BookingRepository bookingRepository;
 
     @GetMapping
     public List<Staff> all(){
@@ -25,8 +30,19 @@ public class StaffController {
         return staffRepository.getById(id);
     }
 
-    @PutMapping
-    public Staff create(@RequestBody final Staff staff){
+    @PostMapping
+    public Staff add(@RequestBody final Staff staff){
         return staffRepository.saveAndFlush(staff);
+    }
+
+    @RequestMapping(name = "{id}", method = RequestMethod.DELETE)
+    public ResponseEntity<String> delete(@RequestParam Long id){
+        List<Booking> bookings = bookingRepository.findByStaffId(id);
+        if (bookings.size() == 0) {
+            bookingRepository.deleteById(id);
+            return ResponseEntity.ok("Delete successful");
+        } else {
+            return new ResponseEntity<>("Cannot delete a staff member who has active bookings", HttpStatus.EXPECTATION_FAILED);
+        }
     }
 }

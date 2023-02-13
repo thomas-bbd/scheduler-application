@@ -1,41 +1,41 @@
 package com.training.schedulerapplication.models;
 
-import javax.persistence.Entity;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
-import javax.persistence.Id;
+import javax.persistence.*;
+import java.util.List;
 
 @Entity(name = "staff")
 public class Staff {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long staff_id;
-    private String first_name;
-    private String last_name;
+    private Long staffId;
+    private String firstName;
+    private String lastName;
     private String role;
+    @OneToMany
+    private List<Booking> bookings;
 
-    public Long getStaff_id() {
-        return staff_id;
+    public Long getStaffId() {
+        return staffId;
     }
 
-    public void setStaff_id(Long staff_id) {
-        this.staff_id = staff_id;
+    public void setStaffId(Long staff_id) {
+        this.staffId = staff_id;
     }
 
-    public String getFirst_name() {
-        return first_name;
+    public String getFirstName() {
+        return firstName;
     }
 
-    public void setFirst_name(String first_name) {
-        this.first_name = first_name;
+    public void setFirstName(String first_name) {
+        this.firstName = first_name;
     }
 
-    public String getLast_name() {
-        return last_name;
+    public String getLastName() {
+        return lastName;
     }
 
-    public void setLast_name(String last_name) {
-        this.last_name = last_name;
+    public void setLastName(String last_name) {
+        this.lastName = last_name;
     }
 
     public String getRole() {
@@ -44,5 +44,13 @@ public class Staff {
 
     public void setRole(String role) {
         this.role = role;
+    }
+
+    public List<Booking> getBookings() {
+        return bookings;
+    }
+
+    public void setBookings(List<Booking> bookings) {
+        this.bookings = bookings;
     }
 }
