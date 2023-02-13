@@ -38,9 +38,9 @@ public class BookingsController {
     @RequestMapping("{id}")
     public ResponseEntity<EntityModel<Booking>> get(@PathVariable Long id){
         return bookingRepository.findById(id) //
-                .map(employee -> EntityModel.of(employee, //
-                        linkTo(methodOn(BookingsController.class).get(employee.getBookingId())).withSelfRel(), //
-                        linkTo(methodOn(BookingsController.class).all()).withRel("employees"))) //
+                .map(booking -> EntityModel.of(booking, //
+                        linkTo(methodOn(BookingsController.class).get(booking.getBookingId())).withSelfRel(), //
+                        linkTo(methodOn(BookingsController.class).all()).withRel("bookings"))) //
                 .map(ResponseEntity::ok) //
                 .orElse(ResponseEntity.notFound().build());
     }
