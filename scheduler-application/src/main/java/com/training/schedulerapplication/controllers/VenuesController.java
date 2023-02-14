@@ -1,5 +1,7 @@
 package com.training.schedulerapplication.controllers;
 
+import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
 import com.training.schedulerapplication.models.Booking;
 import com.training.schedulerapplication.models.Venue;
 import com.training.schedulerapplication.repositories.BookingRepository;
@@ -23,12 +25,14 @@ import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
 @RestController
 @RequestMapping("/api/venues")
 public class VenuesController {
+    private static final Logger logger = LoggerFactory.getLogger(VenuesController.class);
     @Autowired
     private VenueRepository venueRepository;
     @Autowired
     private BookingRepository bookingRepository;
     @GetMapping
     public ResponseEntity<CollectionModel<EntityModel<Venue>>> all(){
+        logger.info("/api/venues/all endpoint");
         List<EntityModel<Venue>> venue = StreamSupport.stream(venueRepository.findAll().spliterator(), false) //
                 .map(currVenue -> EntityModel.of(currVenue, //
                         linkTo(methodOn(BookingsController.class).get(currVenue.getVenue_id())).withSelfRel(), //
@@ -40,6 +44,7 @@ public class VenuesController {
     @GetMapping
     @RequestMapping("{id}")
     public ResponseEntity<EntityModel<Venue>> get(@PathVariable Long id){
+        logger.info("/api/venues/get/{} endpoint", id);
         return venueRepository.findById(id) //
                 .map(venue -> EntityModel.of(venue, //
                         linkTo(methodOn(BookingsController.class).get(venue.getVenue_id())).withSelfRel(), //
@@ -50,6 +55,7 @@ public class VenuesController {
 
     @PostMapping
     public ResponseEntity<?> add(@RequestBody final Venue venue){
+        logger.info("/api/venues/add endpoint for venue: {}", venue);
         Venue newVenue =  venueRepository.saveAndFlush(venue);
         EntityModel<Venue> venueResource = EntityModel.of(newVenue, linkTo(methodOn(BookingsController.class)
                 .get(newVenue.getVenue_id())).withSelfRel());
