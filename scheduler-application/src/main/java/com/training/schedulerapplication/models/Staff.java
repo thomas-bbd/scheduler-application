@@ -7,19 +7,19 @@ import java.util.List;
 public class Staff {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long staffId;
+    private Long id;
     private String firstName;
     private String lastName;
     private String role;
     @OneToMany
     private List<Booking> bookings;
 
-    public Long getStaffId() {
-        return staffId;
+    public Long getId() {
+        return id;
     }
 
-    public void setStaffId(Long staff_id) {
-        this.staffId = staff_id;
+    public void setId(Long staff_id) {
+        this.id = staff_id;
     }
 
     public String getFirstName() {

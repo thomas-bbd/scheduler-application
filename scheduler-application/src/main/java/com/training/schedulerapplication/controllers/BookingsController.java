@@ -19,16 +19,17 @@ import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 @RestController
-@RequestMapping("/bookings")
+@RequestMapping("/api/bookings")
 public class BookingsController {
     @Autowired
     private BookingRepository bookingRepository;
 
     @GetMapping
     public ResponseEntity<CollectionModel<EntityModel<Booking>>> all(){
+        System.out.println("In the all function of the bookings controller");
         List<EntityModel<Booking>> bookings = StreamSupport.stream(bookingRepository.findAll().spliterator(), false) //
                 .map(booking -> EntityModel.of(booking, //
-                        linkTo(methodOn(BookingsController.class).get(booking.getBookingId())).withSelfRel(), //
+                        linkTo(methodOn(BookingsController.class).get(booking.getId())).withSelfRel(), //
                         linkTo(methodOn(BookingsController.class).all()).withRel("bookings"))).collect(Collectors.toList());
         return ResponseEntity.ok(CollectionModel.of(bookings, //
                 linkTo(methodOn(BookingsController.class).all()).withSelfRel()));
@@ -39,7 +40,7 @@ public class BookingsController {
     public ResponseEntity<EntityModel<Booking>> get(@PathVariable Long id){
         return bookingRepository.findById(id) //
                 .map(booking -> EntityModel.of(booking, //
-                        linkTo(methodOn(BookingsController.class).get(booking.getBookingId())).withSelfRel(), //
+                        linkTo(methodOn(BookingsController.class).get(booking.getId())).withSelfRel(), //
                         linkTo(methodOn(BookingsController.class).all()).withRel("bookings"))) //
                 .map(ResponseEntity::ok) //
                 .orElse(ResponseEntity.notFound().build());
@@ -49,7 +50,7 @@ public class BookingsController {
     public ResponseEntity<?> add(@RequestBody final Booking booking){
         Booking newBooking =  bookingRepository.saveAndFlush(booking);
         EntityModel<Booking> bookingResource = EntityModel.of(newBooking, linkTo(methodOn(BookingsController.class)
-                .get(newBooking.getBookingId())).withSelfRel());
+                .get(newBooking.getId())).withSelfRel());
         try{
             return ResponseEntity.created(new URI(bookingResource.getRequiredLink(IanaLinkRelations.SELF).getHref())) //
                     .body(bookingResource);
@@ -61,7 +62,7 @@ public class BookingsController {
     @PutMapping("{id}")
     public ResponseEntity<?> fullUpdate(@PathVariable Long id, @RequestBody Booking booking){
         boolean invalidBooking = false;
-        invalidBooking = booking.getBookingId() == null || booking.getBookingId() < 0 || booking.getStaff() == null
+        invalidBooking = booking.getId() == null || booking.getId() < 0 || booking.getStaff() == null
                 || booking.getBooking_length() == null || booking.getDescription() == null;
         if(invalidBooking){
             return ResponseEntity.badRequest().body("Not all booking fields were filled. Cannot update. Use a PATCH request instead");
@@ -95,9 +96,9 @@ public class BookingsController {
         if(booking.getVenue() != null){
             currentBooking.setVenue(booking.getVenue());
         }
-        if(booking.getVenueId() >= 0){
-            currentBooking.setVenueId(booking.getVenueId());
-        }
+//        if(booking.getVenueId() >= 0){
+//            currentBooking.setVenueId(booking.getVenueId());
+//        }
         Link newLink = linkTo(methodOn(BookingsController.class).get(id)).withSelfRel();
         try{
             return ResponseEntity.noContent().location(new URI(newLink.getHref())).build();

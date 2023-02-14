@@ -9,16 +9,16 @@ import javax.persistence.Id;
 public class Venue {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long venueId;
+    private Long venue_id;
     private String buildingName;
     private String roomName;
 
-    public Long getVenueId() {
-        return venueId;
+    public Long getVenue_id() {
+        return venue_id;
     }
 
-    public void setVenueId(Long venueId) {
-        this.venueId = venueId;
+    public void setVenue_id(Long venueId) {
+        this.venue_id = venueId;
     }
 
     public String getBuildingName() {

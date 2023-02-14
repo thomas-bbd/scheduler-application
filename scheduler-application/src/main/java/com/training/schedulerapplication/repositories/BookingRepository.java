@@ -7,8 +7,9 @@ import org.springframework.data.jpa.repository.Query;
 import java.util.List;
 
 public interface BookingRepository extends JpaRepository<Booking, Long> {
-//    @Query("SELECT t from bookings t WHERE t.venue_id=?1")
-    public List<Booking> findByVenueId(Long venue_id);
+    @Query(value = "SELECT * FROM bookings WHERE venue_id=?1", nativeQuery = true)
+    public List<Booking> findByVenueId(Long id);
 
-    public List<Booking> findByStaffId(Long staff_id);
+    @Query(value = "SELECT * FROM bookings WHERE staff_id=?1", nativeQuery = true)
+    public List<Booking> findByStaffId(Long id);
 }
