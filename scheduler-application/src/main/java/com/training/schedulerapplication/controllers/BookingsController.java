@@ -17,6 +17,7 @@ import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.*;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
@@ -60,6 +61,7 @@ public class BookingsController {
             return ResponseEntity.created(new URI(bookingResource.getRequiredLink(IanaLinkRelations.SELF).getHref())) //
                     .body(bookingResource);
         } catch (URISyntaxException e){
+            logger.error("Unable to update booking with URI error: {}", e.getMessage());
             return ResponseEntity.badRequest().body("Unable to create booking");
         }
     }
@@ -71,15 +73,21 @@ public class BookingsController {
         invalidBooking = booking.getId() == null || booking.getId() < 0 || booking.getStaff() == null
                 || booking.getBooking_length() == null || booking.getDescription() == null;
         if(invalidBooking){
+            logger.warn("Provided booking does not have all fields filled: {}", booking);
             return ResponseEntity.badRequest().body("Not all booking fields were filled. Cannot update. Use a PATCH request instead");
         } else{
-            Booking currentBooking = bookingRepository.findById(id).orElseThrow(() -> new BookingNotFoundException(id));
-            BeanUtils.copyProperties(booking, currentBooking, "booking_id"); // Don't override primary key
-            bookingRepository.saveAndFlush(currentBooking);
+            Optional<Booking> currentBooking = bookingRepository.findById(id);
+            if(!currentBooking.isPresent()){
+                logger.error("Cannot find booking with ID={} to be updated", id);
+                throw new BookingNotFoundException(id);
+            }
+            BeanUtils.copyProperties(booking, currentBooking.get(), "booking_id"); // Don't override primary key
+            bookingRepository.saveAndFlush(currentBooking.get());
             Link newLink = linkTo(methodOn(BookingsController.class).get(id)).withSelfRel();
             try{
                 return ResponseEntity.noContent().location(new URI(newLink.getHref())).build();
             } catch (URISyntaxException e){
+                logger.error("Unable to update booking with URI error: {}", e.getMessage());
                 return ResponseEntity.badRequest().body("Unable to update booking with id: " + id);
             }
         }
@@ -89,18 +97,22 @@ public class BookingsController {
     @RequestMapping(name = "{id}", method = RequestMethod.PATCH)
     public ResponseEntity<?> patchUpdate(@PathVariable Long id, @RequestBody Booking booking){
         logger.info("/api/bookings/patchUpdate endpoint for ID: {}, booking {} ", id, booking);
-        Booking currentBooking = bookingRepository.findById(id).orElseThrow(() -> new BookingNotFoundException(id));
+        Optional<Booking> currentBooking = bookingRepository.findById(id);
+        if(!currentBooking.isPresent()){
+            logger.error("Cannot find booking with ID={} to be updated", id);
+            throw new BookingNotFoundException(id);
+        }
         if(booking.getDescription() != null){
-            currentBooking.setDescription(booking.getDescription());
+            currentBooking.get().setDescription(booking.getDescription());
         }
         if(booking.getBooking_length() != 0 && booking.getBooking_length() != null){
-            currentBooking.setBooking_length(booking.getBooking_length());
+            currentBooking.get().setBooking_length(booking.getBooking_length());
         }
         if(booking.getStaff() != null){
-            currentBooking.setStaff(booking.getStaff());
+            currentBooking.get().setStaff(booking.getStaff());
         }
         if(booking.getVenue() != null){
-            currentBooking.setVenue(booking.getVenue());
+            currentBooking.get().setVenue(booking.getVenue());
         }
 //        if(booking.getVenueId() >= 0){
 //            currentBooking.setVenueId(booking.getVenueId());
@@ -109,7 +121,7 @@ public class BookingsController {
         try{
             return ResponseEntity.noContent().location(new URI(newLink.getHref())).build();
         } catch (URISyntaxException e){
-            logger.error("Unable to update booking with URI error: {}", e);
+            logger.error("Unable to update booking with URI error: {}", e.getMessage());
             return ResponseEntity.badRequest().body("Unable to update booking with id: " + id);
         }
     }
@@ -127,4 +139,5 @@ public class BookingsController {
             return new BookingNotFoundException(id);
         });
     }
+
 }

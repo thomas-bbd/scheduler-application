@@ -63,6 +63,7 @@ public class VenuesController {
             return ResponseEntity.created(new URI(venueResource.getRequiredLink(IanaLinkRelations.SELF).getHref())) //
                     .body(venueResource);
         } catch (URISyntaxException e){
+            logger.error("Unable to update booking with URI error: {}", e.getMessage());
             return ResponseEntity.badRequest().body("Unable to create venue");
         }
     }
