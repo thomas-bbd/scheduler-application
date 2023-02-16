@@ -127,7 +127,7 @@ public class BookingsController {
     }
 
     @RequestMapping(name = "{id}", method = RequestMethod.DELETE)
-    public ResponseEntity<?> delete(@RequestParam Long id){
+    public ResponseEntity<?> delete(@PathVariable Long id){
         logger.info("/api/bookings/delete/{} endpoint", id);
         return bookingRepository.findById(id).map(booking -> {
             logger.info("Deleting booking: {}", booking);
