@@ -7,15 +7,18 @@ import com.training.schedulerapplication.models.Venue;
 import com.training.schedulerapplication.repositories.BookingRepository;
 import com.training.schedulerapplication.repositories.VenueRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.hateoas.CollectionModel;
 import org.springframework.hateoas.EntityModel;
 import org.springframework.hateoas.IanaLinkRelations;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
@@ -41,43 +44,57 @@ public class VenuesController {
     }
 
     @GetMapping("/api/venues/{id}")
-    public ResponseEntity<EntityModel<Venue>> get(@PathVariable Long id){
+    public ResponseEntity<?> get(@PathVariable Long id){
         logger.info("/api/venues/get/{} endpoint", id);
-        return venueRepository.findById(id) //
-                .map(venue -> EntityModel.of(venue, //
-                        linkTo(methodOn(VenuesController.class).get(venue.getId())).withSelfRel(), //
-                        linkTo(methodOn(VenuesController.class).all()).withRel("venues"))) //
-                .map(ResponseEntity::ok) //
-                .orElse(ResponseEntity.notFound().build());
+        Optional<Venue> optionalVenue = venueRepository.findById(id);
+        if (optionalVenue.isPresent()){
+            return optionalVenue
+                    .map(venue -> EntityModel.of(venue, //
+                            linkTo(methodOn(VenuesController.class).get(venue.getId())).withSelfRel(), //
+                            linkTo(methodOn(VenuesController.class).all()).withRel("venues"))) //
+                    .map(ResponseEntity::ok).get();
+        } else {
+            logger.info("Could not find venue with ID={}", id);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new VenueNotFoundException(id).getMessage());
+        }
     }
 
     @PostMapping("/api/venues")
     public ResponseEntity<?> add(@RequestBody final Venue venue){
         logger.info("/api/venues/add endpoint for venue: {}", venue);
-        Venue newVenue =  venueRepository.saveAndFlush(venue);
-        EntityModel<Venue> venueResource = EntityModel.of(newVenue, linkTo(methodOn(VenuesController.class)
-                .get(newVenue.getId())).withSelfRel());
-        try{
-            return ResponseEntity.created(new URI(venueResource.getRequiredLink(IanaLinkRelations.SELF).getHref())) //
-                    .body(venueResource);
-        } catch (URISyntaxException e){
-            logger.error("Unable to update booking with URI error: {}", e.getMessage());
-            return ResponseEntity.badRequest().body("Unable to create venue");
+        ResponseEntity.BodyBuilder body = null;
+        if (venue.getBuilding_name() != null && venue.getRoom_name() != null) {
+            Venue newVenue = venueRepository.saveAndFlush(venue);
+            EntityModel<Venue> venueResource = EntityModel.of(newVenue, linkTo(methodOn(VenuesController.class)
+                    .get(newVenue.getId())).withSelfRel());
+            try {
+                return ResponseEntity.created(new URI(venueResource
+                                .getRequiredLink(IanaLinkRelations.SELF).getHref())).body(venueResource);
+            } catch (URISyntaxException e) {
+                logger.error("Unable to update booking with URI error: {}", e.getMessage());
+                return ResponseEntity.badRequest().body("Unable to create venue");
+            }
+        } else {
+            logger.warn("Could not insert Venue without all fields populated");
+            return ResponseEntity.badRequest().body("Provided venue was not complete.");
         }
     }
 
 
     @RequestMapping(value = "/api/venues/{id}", method = RequestMethod.DELETE)
     public ResponseEntity<?> delete(@PathVariable Long id){
-        //Can't delete venue if there is a booking there
         List<Booking> bookings = bookingRepository.findByVenueId(id);
-        if (bookings.size() == 0) { // venue not attached to any bookings
-            return venueRepository.findById(id).map(venue -> {
+        if (bookings.size() == 0) {
+            try {
                 venueRepository.deleteById(id);
-                return ResponseEntity.noContent().build();
-            }).orElseThrow(() -> new VenueNotFoundException(id));
+                return ResponseEntity.ok("Successfully deleted venue with ID=" + id);
+            } catch (EmptyResultDataAccessException e){
+                logger.warn("Attempted deletion of nonexistent venue: {}", e.getMessage());
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new VenueNotFoundException(id).getMessage());
+            }
         } else {
-            throw new DeleteWithActiveVenueException(id);
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(new DeleteWithActiveVenueException(id).getMessage());
         }
     }
+
 }
