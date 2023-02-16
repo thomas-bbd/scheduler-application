@@ -8,9 +8,9 @@ import java.util.List;
 import java.util.Optional;
 
 public interface StaffRepository extends JpaRepository<Staff, Long> {
-    @Query(value = "SELECT id, firstName, lastName, role FROM staff", nativeQuery = true)
+//    @Query(value = "SELECT id, first_name, last_name, role FROM staff", nativeQuery = true)
     public List<Staff> findAll();
 
-    @Query(value = "SELECT id, firstName, lastName, role FROM staff WHERE id = ?1", nativeQuery = true)
+//    @Query(value = "SELECT id, first_name, last_name, role FROM staff WHERE id = ?1", nativeQuery = true)
     public Optional<Staff> findById(Long id);
 }

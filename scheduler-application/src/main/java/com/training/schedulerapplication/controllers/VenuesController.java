@@ -1,5 +1,6 @@
 package com.training.schedulerapplication.controllers;
 
+import com.training.schedulerapplication.services.VenueService;
 import org.slf4j.LoggerFactory;
 import org.slf4j.Logger;
 import com.training.schedulerapplication.models.Booking;
@@ -26,13 +27,17 @@ import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
 
 @RestController
+@RequestMapping("api/venues")
 public class VenuesController {
     private static final Logger logger = LoggerFactory.getLogger(VenuesController.class);
     @Autowired
     private VenueRepository venueRepository;
+
     @Autowired
-    private BookingRepository bookingRepository;
-    @GetMapping("/api/venues")
+    private VenueService venueService;
+
+
+    @GetMapping
     public ResponseEntity<CollectionModel<EntityModel<Venue>>> all(){
         logger.info("/api/venues/all endpoint");
         List<EntityModel<Venue>> venue = StreamSupport.stream(venueRepository.findAll().spliterator(), false) //
@@ -43,7 +48,7 @@ public class VenuesController {
                 linkTo(methodOn(VenuesController.class).all()).withSelfRel()));
     }
 
-    @GetMapping("/api/venues/{id}")
+    @GetMapping("/{id}")
     public ResponseEntity<?> get(@PathVariable Long id){
         logger.info("/api/venues/get/{} endpoint", id);
         Optional<Venue> optionalVenue = venueRepository.findById(id);
@@ -59,7 +64,7 @@ public class VenuesController {
         }
     }
 
-    @PostMapping("/api/venues")
+    @PostMapping
     public ResponseEntity<?> add(@RequestBody final Venue venue){
         logger.info("/api/venues/add endpoint for venue: {}", venue);
         ResponseEntity.BodyBuilder body = null;
@@ -81,19 +86,17 @@ public class VenuesController {
     }
 
 
-    @RequestMapping(value = "/api/venues/{id}", method = RequestMethod.DELETE)
+    @DeleteMapping(value = "/{id}")
     public ResponseEntity<?> delete(@PathVariable Long id){
-        List<Booking> bookings = bookingRepository.findByVenueId(id);
-        if (bookings.size() == 0) {
-            try {
-                venueRepository.deleteById(id);
+        logger.info("/api/venues/delete/{} endpoint", id);
+        try{
+            if(venueService.delete(id)){
                 return ResponseEntity.ok("Successfully deleted venue with ID=" + id);
-            } catch (EmptyResultDataAccessException e){
-                logger.warn("Attempted deletion of nonexistent venue: {}", e.getMessage());
-                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new VenueNotFoundException(id).getMessage());
+            } else {
+                return ResponseEntity.ok("Venue with ID=" + id + " does not exist");
             }
-        } else {
-            return ResponseEntity.status(HttpStatus.CONFLICT).body(new DeleteWithActiveVenueException(id).getMessage());
+        } catch (DeleteWithActiveStaffException e){
+            return ResponseEntity.ok(e.getMessage());
         }
     }
 
