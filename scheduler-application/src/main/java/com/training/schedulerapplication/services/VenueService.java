@@ -10,11 +10,19 @@ import com.training.schedulerapplication.repositories.VenueRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.dao.EmptyResultDataAccessException;
+import org.springframework.hateoas.CollectionModel;
+import org.springframework.hateoas.EntityModel;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
+
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
 
 @Service
 public class VenueService {
@@ -23,6 +31,37 @@ public class VenueService {
     private BookingRepository bookingRepository;
     @Autowired
     private VenueRepository venueRepository;
+
+    public ResponseEntity<CollectionModel<EntityModel<Venue>>> all(){
+        List<EntityModel<Venue>> venue = StreamSupport.stream(venueRepository.findAll().spliterator(), false) //
+                .map(currVenue -> EntityModel.of(currVenue, //
+                        linkTo(methodOn(VenuesController.class).get(currVenue.getId())).withSelfRel(), //
+                        linkTo(methodOn(VenuesController.class).all()).withRel("venues"))).collect(Collectors.toList());
+        return ResponseEntity.ok(CollectionModel.of(venue, //
+                linkTo(methodOn(VenuesController.class).all()).withSelfRel()));
+    }
+
+    public ResponseEntity<EntityModel<Venue>> get(Long id){
+        Optional<Venue> optionalVenue = venueRepository.findById(id);
+        if (optionalVenue.isPresent()) {
+            return optionalVenue
+                    .map(venue -> EntityModel.of(venue, //
+                            linkTo(methodOn(VenuesController.class).get(venue.getId())).withSelfRel(), //
+                            linkTo(methodOn(VenuesController.class).all()).withRel("venues"))) //
+                    .map(ResponseEntity::ok).get();
+        } else {
+            return null;
+        }
+    }
+
+    public Venue add(final Venue venue){
+        if(venue.getRoom_name() != null && !venue.getRoom_name().equals("") &&
+        venue.getBuilding_name() != null && !venue.getBuilding_name().equals("")){
+            return venueRepository.saveAndFlush(venue);
+        } else {
+            return null;
+        }
+    }
 
     public boolean delete(Long id){
         List<Booking> bookings = bookingRepository.findByVenueId(id);
