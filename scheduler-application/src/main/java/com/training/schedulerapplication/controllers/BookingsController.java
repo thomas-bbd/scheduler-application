@@ -152,15 +152,6 @@ public class BookingsController {
         } else {
             return ResponseEntity.badRequest().body("Booking " + id + " does not exist");
         }
-//        return bookingRepository.findById(id).map(booking -> {
-//            logger.info("Deleting booking: {}", booking);
-//            bookingRepository.deleteById(id);
-//            logger.info("Deleted booking");
-//            return ResponseEntity.ok("Successfully deleted booking with id=" + id);
-//        }).orElseThrow(() -> {
-//            logger.error("Booking does not exist - cannot delete");
-//            return ResponseEntity.badRequest().body("Unable to update booking with id: " + id);
-//        });
     }
 
     private Booking createBookingFromRequest(BookingRequest bookingRequest){
