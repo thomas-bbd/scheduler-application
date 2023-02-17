@@ -30,8 +30,6 @@ import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
 @RequestMapping("api/venues")
 public class VenuesController {
     private static final Logger logger = LoggerFactory.getLogger(VenuesController.class);
-    @Autowired
-    private VenueRepository venueRepository;
 
     @Autowired
     private VenueService venueService;
@@ -40,24 +38,15 @@ public class VenuesController {
     @GetMapping
     public ResponseEntity<CollectionModel<EntityModel<Venue>>> all(){
         logger.info("/api/venues/all endpoint");
-        List<EntityModel<Venue>> venue = StreamSupport.stream(venueRepository.findAll().spliterator(), false) //
-                .map(currVenue -> EntityModel.of(currVenue, //
-                        linkTo(methodOn(VenuesController.class).get(currVenue.getId())).withSelfRel(), //
-                        linkTo(methodOn(VenuesController.class).all()).withRel("venues"))).collect(Collectors.toList());
-        return ResponseEntity.ok(CollectionModel.of(venue, //
-                linkTo(methodOn(VenuesController.class).all()).withSelfRel()));
+        return venueService.all();
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<?> get(@PathVariable Long id){
         logger.info("/api/venues/get/{} endpoint", id);
-        Optional<Venue> optionalVenue = venueRepository.findById(id);
-        if (optionalVenue.isPresent()){
-            return optionalVenue
-                    .map(venue -> EntityModel.of(venue, //
-                            linkTo(methodOn(VenuesController.class).get(venue.getId())).withSelfRel(), //
-                            linkTo(methodOn(VenuesController.class).all()).withRel("venues"))) //
-                    .map(ResponseEntity::ok).get();
+        ResponseEntity<EntityModel<Venue>> response = venueService.get(id);
+        if (response != null){
+            return response;
         } else {
             logger.info("Could not find venue with ID={}", id);
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new VenueNotFoundException(id).getMessage());
@@ -67,9 +56,8 @@ public class VenuesController {
     @PostMapping
     public ResponseEntity<?> add(@RequestBody final Venue venue){
         logger.info("/api/venues/add endpoint for venue: {}", venue);
-        ResponseEntity.BodyBuilder body = null;
-        if (venue.getBuilding_name() != null && venue.getRoom_name() != null) {
-            Venue newVenue = venueRepository.saveAndFlush(venue);
+        Venue newVenue = venueService.add(venue);
+        if (newVenue != null) {
             EntityModel<Venue> venueResource = EntityModel.of(newVenue, linkTo(methodOn(VenuesController.class)
                     .get(newVenue.getId())).withSelfRel());
             try {
@@ -93,9 +81,9 @@ public class VenuesController {
             if(venueService.delete(id)){
                 return ResponseEntity.ok("Successfully deleted venue with ID=" + id);
             } else {
-                return ResponseEntity.ok("Venue with ID=" + id + " does not exist");
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new VenueNotFoundException(id).getMessage());
             }
-        } catch (DeleteWithActiveStaffException e){
+        } catch (DeleteWithActiveVenueException e){
             return ResponseEntity.ok(e.getMessage());
         }
     }
