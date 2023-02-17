@@ -89,7 +89,7 @@ public class StaffController {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new StaffNotFoundException(id).getMessage());
             }
         } catch (DeleteWithActiveStaffException e){
-            return ResponseEntity.ok(e.getMessage());
+            return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
 

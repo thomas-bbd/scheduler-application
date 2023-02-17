@@ -27,6 +27,7 @@ public class Booking {
 //            joinColumns = @JoinColumn(name="staffId"),
 //            inverseJoinColumns = @JoinColumn(name="staffId")
 //    )
+    @JoinColumn(name = "staff_id")
     private Staff staff;
 
     public Booking(){}

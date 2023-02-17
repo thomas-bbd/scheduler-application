@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS bookings(
     id int identity primary key,
     venue_id int not null,
     staff_id int not null,
+    booking_length int not null,
     description varchar(100) not null
 );
 
