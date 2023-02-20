@@ -110,43 +110,25 @@ public class BookingsController {
     @PatchMapping("{id}")
     public ResponseEntity<?> patchUpdate(@PathVariable Long id, @RequestBody BookingRequest bookingRequest){
         logger.info("/api/bookings/patchUpdate endpoint for ID: {}, {}", id, bookingRequest);
-        Optional<Booking> currentBooking = bookingRepository.findById(id);
-        if(!currentBooking.isPresent()){
+        if(bookingsService.patchUpdate(id, bookingRequest)){
+            Link newLink = linkTo(methodOn(BookingsController.class).get(id)).withSelfRel();
+            try{
+                return ResponseEntity.ok().location(new URI(newLink.getHref()))
+                        .body("Successfully updated booking with id=" + id);
+            } catch (URISyntaxException e){
+                logger.error("Unable to update booking with URI error: {}", e.getMessage());
+                return ResponseEntity.badRequest().body("Unable to update booking with id: " + id);
+            }
+        } else {
             logger.error("Cannot find booking with ID={} to be updated", id);
-            throw new BookingNotFoundException(id);
-        }
-        if(bookingRequest.getDescription() != null){
-            currentBooking.get().setDescription(bookingRequest.getDescription());
-        }
-//        Integer x = bookingRequest.getBooking_length();
-        if(bookingRequest.getBooking_length() != null && bookingRequest.getBooking_length() != 0){
-            currentBooking.get().setBooking_length(bookingRequest.getBooking_length());
-        }
-        if(bookingRequest.getStaff_id() != null && bookingRequest.getStaff_id() > 0){
-            Staff staff = staffRepository.findById(bookingRequest.getStaff_id()).get();
-            currentBooking.get().setStaff(staff);
-        }
-        if(bookingRequest.getVenue_id() != null && bookingRequest.getVenue_id() > 0){
-            Venue venue = venueRepository.findById(bookingRequest.getVenue_id()).get();
-            currentBooking.get().setVenue(venue);
-        }
-        bookingRepository.saveAndFlush(currentBooking.get());
-        Link newLink = linkTo(methodOn(BookingsController.class).get(id)).withSelfRel();
-        try{
-            return ResponseEntity.ok().location(new URI(newLink.getHref()))
-                    .body("Successfully updated booking with id=" + id);
-        } catch (URISyntaxException e){
-            logger.error("Unable to update booking with URI error: {}", e.getMessage());
-            return ResponseEntity.badRequest().body("Unable to update booking with id: " + id);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new BookingNotFoundException(id).getMessage());
         }
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<?> delete(@PathVariable Long id){
         logger.info("/api/bookings/delete/{} endpoint", id);
-        Optional<Booking> optionalBooking = bookingRepository.findById(id);
-        if(optionalBooking.isPresent()){
-            bookingRepository.deleteById(id);
+        if(bookingsService.delete(id)){
             return ResponseEntity.ok("Successfully deleted booking with id=" + id);
         } else {
             return ResponseEntity.badRequest().body("Booking " + id + " does not exist");

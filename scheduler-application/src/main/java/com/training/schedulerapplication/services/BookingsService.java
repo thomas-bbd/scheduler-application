@@ -85,6 +85,40 @@ public class BookingsService {
         }
     }
 
+    public boolean patchUpdate(Long id, BookingRequest bookingRequest) {
+        Optional<Booking> currentBooking = bookingRepository.findById(id);
+        if (!currentBooking.isPresent()) {
+            return false;
+        } else {
+            if (bookingRequest.getDescription() != null) {
+                currentBooking.get().setDescription(bookingRequest.getDescription());
+            }
+            if (bookingRequest.getBooking_length() != null && bookingRequest.getBooking_length() != 0) {
+                currentBooking.get().setBooking_length(bookingRequest.getBooking_length());
+            }
+            if (bookingRequest.getStaff_id() != null && bookingRequest.getStaff_id() > 0) {
+                Staff staff = staffRepository.findById(bookingRequest.getStaff_id()).get();
+                currentBooking.get().setStaff(staff);
+            }
+            if (bookingRequest.getVenue_id() != null && bookingRequest.getVenue_id() > 0) {
+                Venue venue = venueRepository.findById(bookingRequest.getVenue_id()).get();
+                currentBooking.get().setVenue(venue);
+            }
+            bookingRepository.saveAndFlush(currentBooking.get());
+            return true;
+        }
+    }
+
+    public boolean delete(Long id){
+        Optional<Booking> optionalBooking = bookingRepository.findById(id);
+        if(optionalBooking.isPresent()) {
+            bookingRepository.deleteById(id);
+            return true;
+        } else {
+            return false;
+        }
+    }
+
 
     private Booking createBookingFromRequest(BookingRequest bookingRequest){
         //TODO error handling for is staff and venue don't exist
