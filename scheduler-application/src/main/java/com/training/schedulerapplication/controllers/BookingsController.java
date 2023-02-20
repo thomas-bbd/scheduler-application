@@ -5,6 +5,14 @@ import com.training.schedulerapplication.repositories.BookingRepository;
 import com.training.schedulerapplication.repositories.StaffRepository;
 import com.training.schedulerapplication.repositories.VenueRepository;
 import com.training.schedulerapplication.services.BookingsService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+//import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,13 +43,28 @@ public class BookingsController {
     private BookingsService bookingsService;
 
     @GetMapping
+    @Operation(summary = "All of the bookings")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200",
+                    description = "All bookings",
+                    content = {@Content(mediaType = "application/json", schema = @Schema(implementation = Booking.class))})
+    })
     public ResponseEntity<CollectionModel<EntityModel<Booking>>> all(){
         logger.info("/api/bookings/all endpoint");
         return bookingsService.all();
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<?> get(@PathVariable Long id){
+    @Operation(summary = "Get a booking with a specific ID")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200",
+                    description = "Success - retrieved booking",
+                    content = {@Content(mediaType = "application/json", schema = @Schema(implementation = Booking.class))}),
+            @ApiResponse(responseCode = "404",
+                    description = "Not Found",
+                    content = {@Content(mediaType = "application/json")})
+    })
+    public ResponseEntity<?> get(@Parameter(description = "Id to get booking") @PathVariable Long id){
         logger.info("/api/bookings/get/{} endpoint", id);
         ResponseEntity<EntityModel<Booking>> response = bookingsService.get(id);
         if (response != null){
@@ -53,7 +76,19 @@ public class BookingsController {
     }
 
     @PostMapping
-    public ResponseEntity<?> add(@RequestBody final BookingRequest bookingRequest){
+    @Operation(summary = "Add a booking")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "201",
+                    description = "Created - added booking",
+                    content = {@Content(mediaType = "application/json",
+                            array = @ArraySchema(schema = @Schema(implementation = Booking.class)))}),
+            @ApiResponse(responseCode = "400",
+                    description = "Bad request",
+                    content = {@Content(mediaType = "application/json")})
+    })
+    public ResponseEntity<?> add(
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "A request for adding a booking")
+            @RequestBody BookingRequest bookingRequest){
         logger.info("/api/bookings/add endpoint for {} ", bookingRequest);
         ResponseObject responseObject = bookingsService.add(bookingRequest);
         if(!responseObject.hasError()){
@@ -73,11 +108,23 @@ public class BookingsController {
     }
 
     @PutMapping("{id}")
-    public ResponseEntity<?> fullUpdate(@PathVariable Long id, @RequestBody BookingRequest bookingRequest){
+    @Operation(summary = "Fully update a booking")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200",
+                    description = "Created - added booking",
+                    content = {@Content(mediaType = "application/json")}),
+            @ApiResponse(responseCode = "404",
+                    description = "Not found - either booking, venue, or staff member wasn't found",
+                    content = {@Content(mediaType = "application/json")})
+    })
+    public ResponseEntity<?> fullUpdate(@Parameter(description = "ID of booking to be updated") @PathVariable Long id,
+                                        @io.swagger.v3.oas.annotations.parameters.RequestBody(description =
+                                                "The new booking details. Must all be populated")
+                                        @RequestBody BookingRequest bookingRequest){
         logger.info("/api/bookings/fullUpdate endpoint for ID: {}, {} ", id, bookingRequest.toString());
         ResponseObject responseObject = bookingsService.fullUpdate(id, bookingRequest);
         if(responseObject.hasError()){
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(responseObject.listErrors());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(responseObject.listErrors());
         } else {
             Link newLink = linkTo(methodOn(BookingsController.class).get(id)).withSelfRel();
             try{
@@ -92,7 +139,20 @@ public class BookingsController {
     }
 
     @PatchMapping("{id}")
-    public ResponseEntity<?> patchUpdate(@PathVariable Long id, @RequestBody BookingRequest bookingRequest){
+    @Operation(summary = "Partially update a booking")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200",
+                    description = "Created - added booking",
+                    content = {@Content(mediaType = "application/json")}),
+            @ApiResponse(responseCode = "404",
+                    description = "Not found - booking to be updated could not be found",
+                    content = {@Content(mediaType = "application/json")})
+    })
+    public ResponseEntity<?> patchUpdate(@Parameter(description = "ID of booking to be updated")
+                                         @PathVariable Long id,
+                                         @io.swagger.v3.oas.annotations.parameters.RequestBody(description =
+                                                 "The new booking details. Don't need to all be populated")
+                                         @RequestBody BookingRequest bookingRequest){
         logger.info("/api/bookings/patchUpdate endpoint for ID: {}, {}", id, bookingRequest);
         ResponseObject responseObject = bookingsService.patchUpdate(id, bookingRequest);
         if(!responseObject.hasError()){
@@ -111,7 +171,16 @@ public class BookingsController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> delete(@PathVariable Long id){
+    @Operation(summary = "Delete a booking")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200",
+                    description = "Deleted booking",
+                    content = {@Content(mediaType = "application/json")}),
+            @ApiResponse(responseCode = "404",
+                    description = "Not found - booking to be deleted could not be found",
+                    content = {@Content(mediaType = "application/json")})
+    })
+    public ResponseEntity<?> delete(@Parameter(description = "ID of booking to be deleted") @PathVariable Long id){
         logger.info("/api/bookings/delete/{} endpoint", id);
         ResponseObject responseObject = bookingsService.delete(id);
         if(!responseObject.hasError()){
