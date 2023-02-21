@@ -123,7 +123,7 @@ class BookingsControllerTest {
     }
 
     @Test
-    void fullUpdateShouldReturnBadIfNotExistsAndBookingFull(){
+    void fullUpdateShouldReturnBadIfAnyError(){
         ResponseObject responseObject = new ResponseObject();
         responseObject.addErrorCode(ResponseCodes.BOOKING_NOT_FOUND);
         Mockito.when(bookingsService.fullUpdate(any(Long.class), any(BookingRequest.class)))
@@ -133,8 +133,39 @@ class BookingsControllerTest {
             mockMvc.perform(put(URI).content(asJsonString(new BookingRequest()))
                             .contentType(MediaType.APPLICATION_JSON)
                             .accept(MediaType.APPLICATION_JSON))
-                    .andExpect(status().isBadRequest())
+                    .andExpect(status().isNotFound())
                     .andExpect(content().string("The requested booking was not found."));
+        } catch (Exception e){
+        }
+    }
+
+    @Test
+    void patchUpdateShouldReturnOkIfExistsAndBookingFull(){
+        Mockito.when(bookingsService.patchUpdate(any(Long.class), any(BookingRequest.class)))
+                .thenReturn(new ResponseObject());
+        String URI = "http://localhost:" + port + "/api/bookings/1";
+        try{
+            mockMvc.perform(patch(URI).content(asJsonString(new BookingRequest()))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .accept(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isOk());
+        } catch (Exception e){
+        }
+    }
+
+    @Test
+    void patchUpdateShouldReturnNotFoundIfBookingNotExist(){
+        ResponseObject responseObject = new ResponseObject();
+        responseObject.addErrorCode(ResponseCodes.BOOKING_NOT_FOUND);
+        Mockito.when(bookingsService.patchUpdate(any(Long.class), any(BookingRequest.class)))
+                .thenReturn(responseObject);
+        String URI = "http://localhost:" + port + "/api/bookings/1";
+        try{
+            mockMvc.perform(patch(URI).content(asJsonString(new BookingRequest()))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .accept(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isNotFound())
+                    .andExpect(content().string("Booking 1 does not exist"));
         } catch (Exception e){
         }
     }

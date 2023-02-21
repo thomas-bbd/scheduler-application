@@ -1,18 +1,15 @@
 package com.training.schedulerapplication.services;
 
 import com.training.schedulerapplication.controllers.DeleteWithActiveVenueException;
-import com.training.schedulerapplication.controllers.VenueNotFoundException;
 import com.training.schedulerapplication.models.Booking;
 import com.training.schedulerapplication.models.Venue;
 import com.training.schedulerapplication.controllers.VenuesController;
 import com.training.schedulerapplication.repositories.BookingRepository;
 import com.training.schedulerapplication.repositories.VenueRepository;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Bean;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.hateoas.CollectionModel;
 import org.springframework.hateoas.EntityModel;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 

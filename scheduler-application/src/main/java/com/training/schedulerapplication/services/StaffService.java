@@ -1,12 +1,9 @@
 package com.training.schedulerapplication.services;
 
 import com.training.schedulerapplication.controllers.DeleteWithActiveStaffException;
-import com.training.schedulerapplication.controllers.DeleteWithActiveVenueException;
 import com.training.schedulerapplication.controllers.StaffController;
-import com.training.schedulerapplication.controllers.VenuesController;
 import com.training.schedulerapplication.models.Booking;
 import com.training.schedulerapplication.models.Staff;
-import com.training.schedulerapplication.models.Venue;
 import com.training.schedulerapplication.repositories.BookingRepository;
 import com.training.schedulerapplication.repositories.StaffRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -76,7 +73,6 @@ public class StaffService {
     }
 
     private boolean validStaff(Staff staff){
-        //Ensure all staff fields are populated
         return
                 staff.getFirst_name() != null && !staff.getFirst_name().equals("") &&
                         staff.getLast_name() != null && !staff.getLast_name().equals("") &&

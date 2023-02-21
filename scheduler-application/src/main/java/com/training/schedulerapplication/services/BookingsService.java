@@ -1,12 +1,7 @@
 package com.training.schedulerapplication.services;
 
-import com.training.schedulerapplication.controllers.BookingNotFoundException;
 import com.training.schedulerapplication.controllers.BookingsController;
-import com.training.schedulerapplication.controllers.StaffController;
-import com.training.schedulerapplication.models.Booking;
-import com.training.schedulerapplication.models.BookingRequest;
-import com.training.schedulerapplication.models.Staff;
-import com.training.schedulerapplication.models.Venue;
+import com.training.schedulerapplication.models.*;
 import com.training.schedulerapplication.repositories.BookingRepository;
 import com.training.schedulerapplication.repositories.StaffRepository;
 import com.training.schedulerapplication.repositories.VenueRepository;
@@ -14,15 +9,8 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.hateoas.CollectionModel;
 import org.springframework.hateoas.EntityModel;
-import org.springframework.hateoas.Link;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -62,33 +50,43 @@ public class BookingsService {
         }
     }
 
-    public Booking add(final BookingRequest bookingRequest){
-        if(isBookingRequestFull(bookingRequest)){
-            return bookingRepository.saveAndFlush(createBookingFromRequest(bookingRequest));
-        } else {
-            return null;
+    public ResponseObject add(final BookingRequest bookingRequest){
+        ResponseObject checkedBooking = checkStaffVenue(bookingRequest);
+        if (!isBookingRequestFull(bookingRequest)) {
+            checkedBooking.addErrorCode(ResponseCodes.INVALID_BOOKING);
         }
+        if(!checkedBooking.hasError()){
+            Booking savedBooking = bookingRepository.saveAndFlush(
+                    createBookingFromRequest(bookingRequest, checkedBooking.getStaff(), checkedBooking.getVenue()));
+            checkedBooking.setBooking(savedBooking);
+        }
+        return checkedBooking;
     }
 
-    public boolean fullUpdate(Long id, BookingRequest bookingRequest){
-        if(isBookingRequestFull(bookingRequest)){
-            Optional<Booking> currentBooking = bookingRepository.findById(id);
-            if(!currentBooking.isPresent()){
-                throw new BookingNotFoundException(id);
-            }
-            Booking booking = createBookingFromRequest(bookingRequest);
+    public ResponseObject fullUpdate(Long id, BookingRequest bookingRequest){
+        ResponseObject checkedBooking = checkStaffVenue(bookingRequest);
+        if (!isBookingRequestFull(bookingRequest)) {
+            checkedBooking.addErrorCode(ResponseCodes.INVALID_BOOKING);
+        }
+        Optional<Booking> currentBooking = bookingRepository.findById(id);
+        if(!currentBooking.isPresent()){
+            checkedBooking.addErrorCode(ResponseCodes.BOOKING_NOT_FOUND);
+        }
+
+        if (!checkedBooking.hasError()) {
+            Booking booking = createBookingFromRequest(bookingRequest,
+                    checkedBooking.getStaff(), checkedBooking.getVenue());
             BeanUtils.copyProperties(booking, currentBooking.get(), "id"); // Don't override primary key
             bookingRepository.saveAndFlush(currentBooking.get());
-            return true;
-        } else{
-            return false;
         }
+        return checkedBooking;
     }
 
-    public boolean patchUpdate(Long id, BookingRequest bookingRequest) {
+    public ResponseObject patchUpdate(Long id, BookingRequest bookingRequest) {
         Optional<Booking> currentBooking = bookingRepository.findById(id);
+        ResponseObject responseObject = new ResponseObject();
         if (!currentBooking.isPresent()) {
-            return false;
+            responseObject.addErrorCode(ResponseCodes.BOOKING_NOT_FOUND);
         } else {
             if (bookingRequest.getDescription() != null) {
                 currentBooking.get().setDescription(bookingRequest.getDescription());
@@ -105,25 +103,23 @@ public class BookingsService {
                 currentBooking.get().setVenue(venue);
             }
             bookingRepository.saveAndFlush(currentBooking.get());
-            return true;
         }
+        return responseObject;
     }
 
-    public boolean delete(Long id){
+    public ResponseObject delete(Long id){
+        ResponseObject responseObject = new ResponseObject();
         Optional<Booking> optionalBooking = bookingRepository.findById(id);
         if(optionalBooking.isPresent()) {
             bookingRepository.deleteById(id);
-            return true;
         } else {
-            return false;
+            responseObject.addErrorCode(ResponseCodes.BOOKING_NOT_FOUND);
         }
+        return responseObject;
     }
 
 
-    private Booking createBookingFromRequest(BookingRequest bookingRequest){
-        //TODO error handling for is staff and venue don't exist
-        Staff staff = staffRepository.findById(bookingRequest.getStaff_id()).get();
-        Venue venue = venueRepository.findById(bookingRequest.getVenue_id()).get();
+    private Booking createBookingFromRequest(BookingRequest bookingRequest, Staff staff, Venue venue){
 
         Booking booking = new Booking();
         booking.setBooking_length(bookingRequest.getBooking_length());
@@ -142,5 +138,23 @@ public class BookingsService {
                 && bookingRequest.getVenue_id() > 0
                 && bookingRequest.getStaff_id() != null
                 && bookingRequest.getStaff_id() > 0;
+    }
+
+    private ResponseObject checkStaffVenue(BookingRequest bookingRequest){
+        ResponseObject response = new ResponseObject();
+        Optional<Staff> newStaff = staffRepository.findById(bookingRequest.getStaff_id());
+        if(newStaff.isPresent()){
+            response.setStaff(newStaff.get());
+        } else {
+            response.addErrorCode(ResponseCodes.BOOKINGS_STAFF_NOT_EXIST);
+        }
+        Optional<Venue> newVenue = venueRepository.findById(bookingRequest.getVenue_id());
+        if(newVenue.isPresent()){
+            response.setVenue(newVenue.get());
+        } else {
+            response.addErrorCode(ResponseCodes.BOOKINGS_VENUE_NOT_EXIST);
+        }
+
+        return response;
     }
 }
