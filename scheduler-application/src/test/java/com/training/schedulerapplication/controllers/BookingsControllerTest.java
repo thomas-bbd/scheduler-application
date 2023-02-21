@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.training.schedulerapplication.models.Booking;
 import com.training.schedulerapplication.models.BookingRequest;
 import com.training.schedulerapplication.models.ResponseObject;
-import com.training.schedulerapplication.models.Staff;
 import com.training.schedulerapplication.services.BookingsService;
 import com.training.schedulerapplication.services.ResponseCodes;
 import org.junit.jupiter.api.BeforeAll;
@@ -78,14 +77,17 @@ class BookingsControllerTest {
 
     @Test
     void addShouldReturnBadRequestIfBookingNotPopulated() {
-        Mockito.when(bookingsService.add(any(BookingRequest.class))).thenReturn(null);
+        ResponseObject response = new ResponseObject();
+        response.addErrorCode(ResponseCodes.BOOKINGS_STAFF_NOT_EXIST);
+        Mockito.when(bookingsService.add(any(BookingRequest.class))).thenReturn(response);
         BookingRequest bookingRequest = new BookingRequest();
         String URI = "http://localhost:" + port + "/api/bookings";
         try{
             mockMvc.perform(post(URI).content(asJsonString(bookingRequest))
                             .contentType(MediaType.APPLICATION_JSON)
                             .accept(MediaType.APPLICATION_JSON))
-                    .andExpect(status().isBadRequest());
+                    .andExpect(status().isBadRequest())
+                    .andExpect(content().string("Provided staff ID doesn't match any record in database."));
         } catch (Exception e){
         }
     }

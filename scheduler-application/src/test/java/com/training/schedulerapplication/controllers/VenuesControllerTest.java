@@ -26,6 +26,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -121,6 +122,19 @@ class VenuesControllerTest {
         try{
             mockMvc.perform(delete(URI))
                     .andExpect(status().isNotFound());
+        } catch (Exception e){
+        }
+    }
+
+    @Test
+    void deleteShouldReturnThrowWhenStaffWithActiveBooking() {
+        Mockito.when(venueService.delete(any(Long.class))).thenThrow(new DeleteWithActiveVenueException(1L));
+        String URI = "http://localhost:" + port + "/api/venues/1";
+        try{
+            mockMvc.perform(delete(URI))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(content().string("Can't delete venue that has active bookings attached. " +
+                            "ID: 1"));
         } catch (Exception e){
         }
     }

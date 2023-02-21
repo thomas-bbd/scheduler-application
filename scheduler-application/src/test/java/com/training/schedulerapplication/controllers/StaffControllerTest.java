@@ -28,6 +28,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -76,9 +77,7 @@ class StaffControllerTest {
 
     @Test
     void addShouldReturnBadRequestIfStaffNotPopulated() {
-        Mockito.when(staffService.add(any(Staff.class))).thenReturn(null);
         Staff staff = new Staff();
-        staff.setFirst_name("TestFirstName");
         String URI = "http://localhost:" + port + "/api/staff";
         try{
             mockMvc.perform(post(URI).content(asJsonString(staff))
@@ -124,6 +123,19 @@ class StaffControllerTest {
         try{
             mockMvc.perform(delete(URI))
                     .andExpect(status().isNotFound());
+        } catch (Exception e){
+        }
+    }
+
+    @Test
+    void deleteShouldReturnThrowWhenStaffWithActiveBooking() {
+        Mockito.when(staffService.delete(any(Long.class))).thenThrow(new DeleteWithActiveStaffException(1L));
+        String URI = "http://localhost:" + port + "/api/staff/1";
+        try{
+            mockMvc.perform(delete(URI))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(content().string("Cannot delete a staff member who has active bookings. " +
+                            "Staff ID: 1"));
         } catch (Exception e){
         }
     }
