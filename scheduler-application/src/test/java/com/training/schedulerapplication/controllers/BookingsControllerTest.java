@@ -59,25 +59,25 @@ class BookingsControllerTest {
     }
 
     @Test
-    void allShouldReturnOk() {
+    void all_ShouldReturnOk() {
         ResponseEntity<String> response = this.restTemplate.getForEntity("http://localhost:" + port + "/api/bookings", String.class);
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
     }
 
     @Test
-    void getShouldReturnOkForId_1() {
+    void get_ShouldReturnOk_WhenId_1() {
         ResponseEntity<String> response = this.restTemplate.getForEntity("http://localhost:" + port + "/api/bookings/1", String.class);
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
     }
 
     @Test
-    void getShouldReturnNotFoundForId_6() {
+    void get_ShouldReturnNotFound_WhenId_6() {
         ResponseEntity<String> response = this.restTemplate.getForEntity("http://localhost:" + port + "/api/bookings/7", String.class);
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     }
 
     @Test
-    void addShouldReturnBadRequestIfBookingNotPopulatedAtAll() {
+    void add_ShouldReturnBadRequest_WhenBookingNotPopulatedAtAll() {
         ResponseObject response = new ResponseObject();
         response.addErrorCode(ResponseCodes.BOOKINGS_STAFF_NOT_EXIST);
 //        Mockito.when(bookingsService.add(any(BookingRequest.class))).thenReturn(response);
@@ -94,7 +94,7 @@ class BookingsControllerTest {
     }
 
     @Test
-    void addShouldReturnBadRequestIfBookingHalfPopulated() {
+    void add_ShouldReturnBadRequest_WhenBookingHalfPopulated() {
         ResponseObject response = new ResponseObject();
         response.addErrorCode(ResponseCodes.BOOKINGS_STAFF_NOT_EXIST);
 //        Mockito.when(bookingsService.add(any(BookingRequest.class))).thenReturn(response);
@@ -113,7 +113,7 @@ class BookingsControllerTest {
     }
 
     @Test
-    void addShouldReturnCreatedIfBookingPopulated() {
+    void add_ShouldReturnCreated_WhenBookingPopulated() {
         ResponseObject response = new ResponseObject();
         Booking booking = new Booking();
         booking.setId(1L);
@@ -135,7 +135,7 @@ class BookingsControllerTest {
     }
 
     @Test
-    void fullUpdateShouldReturnOkIfExistsAndBookingFull(){
+    void fullUpdate_ShouldReturnOk_WhenExistsAndBookingFull(){
         BookingRequest request = new BookingRequest();
         request.setBooking_length(1);
         request.setDescription("test");
@@ -154,7 +154,7 @@ class BookingsControllerTest {
     }
 
     @Test
-    void fullUpdateShouldReturnBadIfAnyError(){
+    void fullUpdate_ShouldReturnBad_WhenAnyError(){
         BookingRequest request = new BookingRequest();
         request.setBooking_length(1);
         request.setDescription("test");
@@ -176,7 +176,7 @@ class BookingsControllerTest {
     }
 
     @Test
-    void patchUpdateShouldReturnOkIfExistsAndBookingFull(){
+    void patchUpdate_ShouldReturnOk_WhenExistsAndBookingFull(){
         BookingRequest request = new BookingRequest();
         request.setVenue_id(1L);
         Mockito.when(bookingsService.patchUpdate(any(Long.class), any(BookingRequest.class)))
@@ -192,7 +192,7 @@ class BookingsControllerTest {
     }
 
     @Test
-    void patchUpdateShouldReturnNotFoundIfBookingNotExist(){
+    void patchUpdate_ShouldReturnNotFound_WhenBookingNotExist(){
         BookingRequest request = new BookingRequest();
         request.setVenue_id(1L);
         request.setStaff_id(1L);
