@@ -24,6 +24,9 @@ import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.*;
 
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 @RestController
 @RequestMapping("/api/bookings")
@@ -39,7 +42,12 @@ public class BookingsController {
     })
     public ResponseEntity<CollectionModel<EntityModel<Booking>>> all(){
         logger.info("/api/bookings/all endpoint");
-        return bookingsService.all();
+        List<EntityModel<Booking>> bookings = StreamSupport.stream(bookingsService.all().spliterator(), false)
+                .map(booking -> EntityModel.of(
+                        booking,
+                        createSelfHateoasLinkGet(booking.getId()),
+                        createSelfHateoasLinkAllWithRel())).collect(Collectors.toList());
+        return ResponseEntity.ok(CollectionModel.of(bookings, createSelfHateoasLinkAll()));
     }
 
     @GetMapping("/{id}")
@@ -53,8 +61,8 @@ public class BookingsController {
         Booking response = bookingsService.get(id);
         if (response != null){
             EntityModel<Booking> model = EntityModel.of(response, //
-                    createSelfHateoasLink(response.getId()), //
-                    linkTo(methodOn(BookingsController.class).all()).withRel("bookings"));
+                    createSelfHateoasLinkGet(response.getId()), //
+                    createSelfHateoasLinkAllWithRel());
             return new ResponseEntity<>(model, HttpStatus.OK);
         } else {
             logger.info("Could not find booking with ID={}", id);
@@ -76,7 +84,7 @@ public class BookingsController {
             ResponseObject responseObject = bookingsService.add(bookingRequest);
             if (!responseObject.hasError()) {
                 Booking newBooking = responseObject.getBooking();
-                EntityModel<Booking> bookingResource = EntityModel.of(newBooking, createSelfHateoasLink(newBooking.getId()));
+                EntityModel<Booking> bookingResource = EntityModel.of(newBooking, createSelfHateoasLinkGet(newBooking.getId()));
                 try {
                     return ResponseEntity.created(new URI(bookingResource.getRequiredLink(IanaLinkRelations.SELF).getHref())).body(bookingResource);
                 } catch (URISyntaxException e) {
@@ -109,7 +117,7 @@ public class BookingsController {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(responseObject.listErrors());
             } else {
                 try {
-                    return ResponseEntity.ok().location(new URI(createSelfHateoasLink(id).getHref()))
+                    return ResponseEntity.ok().location(new URI(createSelfHateoasLinkGet(id).getHref()))
                             .body("Successfully updated booking with id=" + id);
                 } catch (URISyntaxException e) {
                     logger.error("Unable to update booking with URI error: {}", e.getMessage());
@@ -139,7 +147,7 @@ public class BookingsController {
                 ResponseObject responseObject = bookingsService.patchUpdate(id, bookingRequest);
                 if (!responseObject.hasError()) {
                     try {
-                        return ResponseEntity.ok().location(new URI(createSelfHateoasLink(id).getHref())).body("Successfully updated booking with id=" + id);
+                        return ResponseEntity.ok().location(new URI(createSelfHateoasLinkGet(id).getHref())).body("Successfully updated booking with id=" + id);
                     } catch (URISyntaxException e) {
                         logger.error("Unable to update booking with URI error: {}", e.getMessage());
                         return ResponseEntity.badRequest().body("Unable to update booking with id: " + id);
@@ -191,8 +199,16 @@ public class BookingsController {
                 && bookingRequest.getStaff_id() > 0;
     }
 
-    private Link createSelfHateoasLink(Long id){
+    private Link createSelfHateoasLinkGet(Long id){
         return linkTo(methodOn(BookingsController.class).get(id)).withSelfRel();
+    }
+
+    private Link createSelfHateoasLinkAll(){
+        return linkTo(methodOn(BookingsController.class).all()).withSelfRel();
+    }
+
+    private Link createSelfHateoasLinkAllWithRel(){
+        return linkTo(methodOn(BookingsController.class).all()).withRel("bookings");
     }
 
 }
