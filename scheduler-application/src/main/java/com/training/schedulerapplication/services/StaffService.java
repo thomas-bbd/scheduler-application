@@ -1,8 +1,6 @@
 package com.training.schedulerapplication.services;
 
 import com.training.schedulerapplication.controllers.DeleteWithActiveStaffException;
-import com.training.schedulerapplication.controllers.StaffController;
-import com.training.schedulerapplication.controllers.VenuesController;
 import com.training.schedulerapplication.models.Booking;
 import com.training.schedulerapplication.models.Staff;
 import com.training.schedulerapplication.repositories.BookingRepository;
@@ -11,18 +9,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.EmptyResultDataAccessException;
-import org.springframework.hateoas.CollectionModel;
-import org.springframework.hateoas.EntityModel;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
-
-import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
-import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
 
 @Service
 public class StaffService {
@@ -34,13 +24,8 @@ public class StaffService {
     @Autowired
     private BookingRepository bookingRepository;
 
-    public ResponseEntity<CollectionModel<EntityModel<Staff>>> all(){
-        List<EntityModel<Staff>> staff = StreamSupport.stream(staffRepository.findAll().spliterator(), false) //
-                .map(currStaff -> EntityModel.of(currStaff, //
-                        linkTo(methodOn(StaffController.class).get(currStaff.getId())).withSelfRel(), //
-                        linkTo(methodOn(StaffController.class).all()).withRel("staff"))).collect(Collectors.toList());
-        return ResponseEntity.ok(CollectionModel.of(staff, //
-                linkTo(methodOn(StaffController.class).all()).withSelfRel()));
+    public List<Staff> all(){
+        return staffRepository.findAll();
     }
 
     public Staff get(Long id){

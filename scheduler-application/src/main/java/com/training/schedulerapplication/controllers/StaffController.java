@@ -25,6 +25,9 @@ import org.springframework.web.bind.annotation.*;
 
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
@@ -44,7 +47,12 @@ public class StaffController {
     })
     public ResponseEntity<CollectionModel<EntityModel<Staff>>> all(){
         logger.info("/api/staff/all endpoint");
-        return staffService.all();
+        List<EntityModel<Staff>> staff = StreamSupport.stream(staffService.all().spliterator(), false)
+                .map(st -> EntityModel.of(
+                        st,
+                        createSelfHateoasLinkGet(st.getId()),
+                        createSelfHateoasLinkAllWithRel())).collect(Collectors.toList());
+        return ResponseEntity.ok(CollectionModel.of(staff, createSelfHateoasLinkAll()));
     }
 
     @GetMapping("/{id}")
@@ -58,8 +66,8 @@ public class StaffController {
         Staff response = staffService.get(id);
         if (response != null){
             EntityModel<Staff> model = EntityModel.of(response, //
-                    createSelfHateoasLink(response.getId()), //
-                    linkTo(methodOn(StaffController.class).all()).withRel("staff"));
+                    createSelfHateoasLinkGet(response.getId()), //
+                    createSelfHateoasLinkAllWithRel());
             return new ResponseEntity<>(model, HttpStatus.OK);
         } else {
             logger.info("Could not find staff with ID={}", id);
@@ -80,7 +88,7 @@ public class StaffController {
             newStaff = staffService.add(staff);
         }
         if(newStaff != null){
-            EntityModel<Staff> staffResource = EntityModel.of(newStaff, createSelfHateoasLink(newStaff.getId()));
+            EntityModel<Staff> staffResource = EntityModel.of(newStaff, createSelfHateoasLinkGet(newStaff.getId()));
             try{
                 return ResponseEntity.created(new URI(staffResource.getRequiredLink(IanaLinkRelations.SELF).getHref())).body(staffResource);
             } catch (URISyntaxException e){
@@ -113,8 +121,16 @@ public class StaffController {
         }
     }
 
-    private Link createSelfHateoasLink(Long id){
+    private Link createSelfHateoasLinkGet(Long id){
         return linkTo(methodOn(BookingsController.class).get(id)).withSelfRel();
+    }
+
+    private Link createSelfHateoasLinkAll(){
+        return linkTo(methodOn(BookingsController.class).all()).withSelfRel();
+    }
+
+    private Link createSelfHateoasLinkAllWithRel(){
+        return linkTo(methodOn(BookingsController.class).all()).withRel("staff");
     }
 
 }
