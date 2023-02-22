@@ -61,9 +61,12 @@ public class VenuesController {
     })
     public ResponseEntity<?> get(@Parameter(description = "ID to get venue") @PathVariable Long id){
         logger.info("/api/venues/get/{} endpoint", id);
-        ResponseEntity<EntityModel<Venue>> response = venueService.get(id);
+        Venue response = venueService.get(id);
         if (response != null){
-            return response;
+            EntityModel<Venue> model = EntityModel.of(response, //
+                    linkTo(methodOn(VenuesController.class).get(response.getId())).withSelfRel(), //
+                    linkTo(methodOn(VenuesController.class).all()).withRel("venues"));
+            return new ResponseEntity<>(model, HttpStatus.OK);
         } else {
             logger.info("Could not find venue with ID={}", id);
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new VenueNotFoundException(id).getMessage());
@@ -123,7 +126,7 @@ public class VenuesController {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new VenueNotFoundException(id).getMessage());
             }
         } catch (DeleteWithActiveVenueException e){
-            return ResponseEntity.ok(e.getMessage());
+            return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
 

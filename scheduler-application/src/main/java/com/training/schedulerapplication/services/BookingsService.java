@@ -37,24 +37,17 @@ public class BookingsService {
                 linkTo(methodOn(BookingsController.class).all()).withSelfRel()));
     }
 
-    public ResponseEntity<EntityModel<Booking>> get(Long id){
+    public Booking get(Long id){
         Optional<Booking> optionalBooking = bookingRepository.findById(id);
-        if (optionalBooking.isPresent()) {
-            return optionalBooking
-                    .map(staff -> EntityModel.of(staff, //
-                            linkTo(methodOn(BookingsController.class).get(staff.getId())).withSelfRel(), //
-                            linkTo(methodOn(BookingsController.class).all()).withRel("bookings"))) //
-                    .map(ResponseEntity::ok).get();
-        } else {
-            return null;
-        }
+        return optionalBooking.isPresent() ? optionalBooking.get() : null;
     }
 
     public ResponseObject add(final BookingRequest bookingRequest){
         ResponseObject checkedBooking = checkStaffVenue(bookingRequest);
-        if (!isBookingRequestFull(bookingRequest)) {
-            checkedBooking.addErrorCode(ResponseCodes.INVALID_BOOKING);
-        }
+        //TODO move this to the controller level
+//        if (!isBookingRequestFull(bookingRequest)) {
+//            checkedBooking.addErrorCode(ResponseCodes.INVALID_BOOKING);
+//        }
         if(!checkedBooking.hasError()){
             Booking savedBooking = bookingRepository.saveAndFlush(
                     createBookingFromRequest(bookingRequest, checkedBooking.getStaff(), checkedBooking.getVenue()));
@@ -65,9 +58,10 @@ public class BookingsService {
 
     public ResponseObject fullUpdate(Long id, BookingRequest bookingRequest){
         ResponseObject checkedBooking = checkStaffVenue(bookingRequest);
-        if (!isBookingRequestFull(bookingRequest)) {
-            checkedBooking.addErrorCode(ResponseCodes.INVALID_BOOKING);
-        }
+        //TODO move this to the controller level
+//        if (!isBookingRequestFull(bookingRequest)) {
+//            checkedBooking.addErrorCode(ResponseCodes.INVALID_BOOKING);
+//        }
         Optional<Booking> currentBooking = bookingRepository.findById(id);
         if(!currentBooking.isPresent()){
             checkedBooking.addErrorCode(ResponseCodes.BOOKING_NOT_FOUND);
@@ -77,7 +71,7 @@ public class BookingsService {
             Booking booking = createBookingFromRequest(bookingRequest,
                     checkedBooking.getStaff(), checkedBooking.getVenue());
             BeanUtils.copyProperties(booking, currentBooking.get(), "id"); // Don't override primary key
-            bookingRepository.saveAndFlush(currentBooking.get());
+            checkedBooking.setBooking(bookingRepository.saveAndFlush(currentBooking.get()));
         }
         return checkedBooking;
     }
@@ -91,18 +85,18 @@ public class BookingsService {
             if (bookingRequest.getDescription() != null) {
                 currentBooking.get().setDescription(bookingRequest.getDescription());
             }
-            if (bookingRequest.getBooking_length() != null && bookingRequest.getBooking_length() != 0) {
+            if (bookingRequest.getBooking_length() != null) {
                 currentBooking.get().setBooking_length(bookingRequest.getBooking_length());
             }
-            if (bookingRequest.getStaff_id() != null && bookingRequest.getStaff_id() > 0) {
+            if (bookingRequest.getStaff_id() != null) {
                 Staff staff = staffRepository.findById(bookingRequest.getStaff_id()).get();
                 currentBooking.get().setStaff(staff);
             }
-            if (bookingRequest.getVenue_id() != null && bookingRequest.getVenue_id() > 0) {
+            if (bookingRequest.getVenue_id() != null) {
                 Venue venue = venueRepository.findById(bookingRequest.getVenue_id()).get();
                 currentBooking.get().setVenue(venue);
             }
-            bookingRepository.saveAndFlush(currentBooking.get());
+            responseObject.setBooking(bookingRepository.saveAndFlush(currentBooking.get()));
         }
         return responseObject;
     }
@@ -129,16 +123,6 @@ public class BookingsService {
         return booking;
     }
 
-    private boolean isBookingRequestFull(BookingRequest bookingRequest){
-        return bookingRequest.getBooking_length() != null
-                && bookingRequest.getBooking_length() > 0
-                && bookingRequest.getDescription() != null
-                && !bookingRequest.getDescription().equals("")
-                && bookingRequest.getVenue_id() != null
-                && bookingRequest.getVenue_id() > 0
-                && bookingRequest.getStaff_id() != null
-                && bookingRequest.getStaff_id() > 0;
-    }
 
     private ResponseObject checkStaffVenue(BookingRequest bookingRequest){
         ResponseObject response = new ResponseObject();

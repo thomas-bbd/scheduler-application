@@ -1,6 +1,5 @@
 package com.training.schedulerapplication.services;
 
-import com.training.schedulerapplication.controllers.BookingsController;
 import com.training.schedulerapplication.controllers.DeleteWithActiveVenueException;
 import com.training.schedulerapplication.models.Booking;
 import com.training.schedulerapplication.models.Venue;
@@ -16,8 +15,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.dao.EmptyResultDataAccessException;
-import org.springframework.hateoas.EntityModel;
-import org.springframework.http.ResponseEntity;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 

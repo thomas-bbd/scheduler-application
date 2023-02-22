@@ -22,8 +22,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+
+import java.awt.print.Book;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -76,10 +77,10 @@ class BookingsControllerTest {
     }
 
     @Test
-    void addShouldReturnBadRequestIfBookingNotPopulated() {
+    void addShouldReturnBadRequestIfBookingNotPopulatedAtAll() {
         ResponseObject response = new ResponseObject();
         response.addErrorCode(ResponseCodes.BOOKINGS_STAFF_NOT_EXIST);
-        Mockito.when(bookingsService.add(any(BookingRequest.class))).thenReturn(response);
+//        Mockito.when(bookingsService.add(any(BookingRequest.class))).thenReturn(response);
         BookingRequest bookingRequest = new BookingRequest();
         String URI = "http://localhost:" + port + "/api/bookings";
         try{
@@ -87,7 +88,26 @@ class BookingsControllerTest {
                             .contentType(MediaType.APPLICATION_JSON)
                             .accept(MediaType.APPLICATION_JSON))
                     .andExpect(status().isBadRequest())
-                    .andExpect(content().string("Provided staff ID doesn't match any record in database."));
+                    .andExpect(content().string("Booking request must be full with ID's greater than 0"));
+        } catch (Exception e){
+        }
+    }
+
+    @Test
+    void addShouldReturnBadRequestIfBookingHalfPopulated() {
+        ResponseObject response = new ResponseObject();
+        response.addErrorCode(ResponseCodes.BOOKINGS_STAFF_NOT_EXIST);
+//        Mockito.when(bookingsService.add(any(BookingRequest.class))).thenReturn(response);
+        BookingRequest request = new BookingRequest();
+        request.setVenue_id(1L);
+        request.setStaff_id(1L);
+        String URI = "http://localhost:" + port + "/api/bookings";
+        try{
+            mockMvc.perform(post(URI).content(asJsonString(request))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .accept(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(content().string("Booking request must be full with ID's greater than 0"));
         } catch (Exception e){
         }
     }
@@ -98,11 +118,15 @@ class BookingsControllerTest {
         Booking booking = new Booking();
         booking.setId(1L);
         response.setBooking(booking);
-        BookingRequest bookingRequest = new BookingRequest();
+        BookingRequest request = new BookingRequest();
+        request.setBooking_length(1);
+        request.setDescription("test");
+        request.setVenue_id(1L);
+        request.setStaff_id(1L);
         Mockito.when(bookingsService.add(any(BookingRequest.class))).thenReturn(response);
         String URI = "http://localhost:" + port + "/api/bookings";
         try{
-            mockMvc.perform(post(URI).content(asJsonString(bookingRequest))
+            mockMvc.perform(post(URI).content(asJsonString(request))
                             .contentType(MediaType.APPLICATION_JSON)
                             .accept(MediaType.APPLICATION_JSON))
                     .andExpect(status().isCreated());
@@ -112,11 +136,16 @@ class BookingsControllerTest {
 
     @Test
     void fullUpdateShouldReturnOkIfExistsAndBookingFull(){
+        BookingRequest request = new BookingRequest();
+        request.setBooking_length(1);
+        request.setDescription("test");
+        request.setVenue_id(1L);
+        request.setStaff_id(1L);
         Mockito.when(bookingsService.fullUpdate(any(Long.class), any(BookingRequest.class)))
                 .thenReturn(new ResponseObject());
         String URI = "http://localhost:" + port + "/api/bookings/1";
         try{
-            mockMvc.perform(put(URI).content(asJsonString(new BookingRequest()))
+            mockMvc.perform(put(URI).content(asJsonString(request))
                             .contentType(MediaType.APPLICATION_JSON)
                             .accept(MediaType.APPLICATION_JSON))
                     .andExpect(status().isOk());
@@ -126,13 +155,18 @@ class BookingsControllerTest {
 
     @Test
     void fullUpdateShouldReturnBadIfAnyError(){
+        BookingRequest request = new BookingRequest();
+        request.setBooking_length(1);
+        request.setDescription("test");
+        request.setVenue_id(1L);
+        request.setStaff_id(1L);
         ResponseObject responseObject = new ResponseObject();
         responseObject.addErrorCode(ResponseCodes.BOOKING_NOT_FOUND);
         Mockito.when(bookingsService.fullUpdate(any(Long.class), any(BookingRequest.class)))
                 .thenReturn(responseObject);
         String URI = "http://localhost:" + port + "/api/bookings/1";
         try{
-            mockMvc.perform(put(URI).content(asJsonString(new BookingRequest()))
+            mockMvc.perform(put(URI).content(asJsonString(request))
                             .contentType(MediaType.APPLICATION_JSON)
                             .accept(MediaType.APPLICATION_JSON))
                     .andExpect(status().isNotFound())
@@ -143,11 +177,13 @@ class BookingsControllerTest {
 
     @Test
     void patchUpdateShouldReturnOkIfExistsAndBookingFull(){
+        BookingRequest request = new BookingRequest();
+        request.setVenue_id(1L);
         Mockito.when(bookingsService.patchUpdate(any(Long.class), any(BookingRequest.class)))
                 .thenReturn(new ResponseObject());
         String URI = "http://localhost:" + port + "/api/bookings/1";
         try{
-            mockMvc.perform(patch(URI).content(asJsonString(new BookingRequest()))
+            mockMvc.perform(patch(URI).content(asJsonString(request))
                             .contentType(MediaType.APPLICATION_JSON)
                             .accept(MediaType.APPLICATION_JSON))
                     .andExpect(status().isOk());
@@ -157,13 +193,16 @@ class BookingsControllerTest {
 
     @Test
     void patchUpdateShouldReturnNotFoundIfBookingNotExist(){
+        BookingRequest request = new BookingRequest();
+        request.setVenue_id(1L);
+        request.setStaff_id(1L);
         ResponseObject responseObject = new ResponseObject();
         responseObject.addErrorCode(ResponseCodes.BOOKING_NOT_FOUND);
         Mockito.when(bookingsService.patchUpdate(any(Long.class), any(BookingRequest.class)))
                 .thenReturn(responseObject);
         String URI = "http://localhost:" + port + "/api/bookings/1";
         try{
-            mockMvc.perform(patch(URI).content(asJsonString(new BookingRequest()))
+            mockMvc.perform(patch(URI).content(asJsonString(request))
                             .contentType(MediaType.APPLICATION_JSON)
                             .accept(MediaType.APPLICATION_JSON))
                     .andExpect(status().isNotFound())
@@ -171,6 +210,82 @@ class BookingsControllerTest {
         } catch (Exception e){
         }
     }
+
+    @Test
+    void patchUpdate_ShouldReturnIdError_WhenBookingIdLessThan1(){
+        String URI = "http://localhost:" + port + "/api/bookings/-1";
+        try{
+            mockMvc.perform(patch(URI).content(asJsonString(new BookingRequest()))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .accept(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(content().string("ID must be greater than 0"));
+        } catch (Exception e){
+        }
+    }
+
+    @Test
+    void patchUpdate_ShouldReturnIdError_WhenStaffIdLessThan1(){
+        BookingRequest request = new BookingRequest();
+        request.setStaff_id(-1L);
+        String URI = "http://localhost:" + port + "/api/bookings/1";
+        try{
+            mockMvc.perform(patch(URI).content(asJsonString(new BookingRequest()))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .accept(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(content().string("Staff/Venue ID invalid. Must be null or greater than 0"));
+        } catch (Exception e){
+        }
+    }
+
+    @Test
+    void patchUpdate_ShouldReturnIdError_WhenVenueIdLessThan1(){
+        BookingRequest request = new BookingRequest();
+        request.setVenue_id(-1L);
+        String URI = "http://localhost:" + port + "/api/bookings/1";
+        try{
+            mockMvc.perform(patch(URI).content(asJsonString(new BookingRequest()))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .accept(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(content().string("Staff/Venue ID invalid. Must be null or greater than 0"));
+        } catch (Exception e){
+        }
+    }
+
+    @Test
+    void patchUpdate_ShouldReturnIdError_WhenVenueIdLessThan1ButStaffIsGood(){
+        BookingRequest request = new BookingRequest();
+        request.setVenue_id(-1L);
+        request.setStaff_id(1L);
+        String URI = "http://localhost:" + port + "/api/bookings/1";
+        try{
+            mockMvc.perform(patch(URI).content(asJsonString(new BookingRequest()))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .accept(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(content().string("Staff/Venue ID invalid. Must be null or greater than 0"));
+        } catch (Exception e){
+        }
+    }
+
+    @Test
+    void patchUpdate_ShouldReturnIdError_WhenVenueStaffIdLessThan1(){
+        BookingRequest request = new BookingRequest();
+        request.setVenue_id(1L);
+        request.setStaff_id(-1L);
+        String URI = "http://localhost:" + port + "/api/bookings/1";
+        try{
+            mockMvc.perform(patch(URI).content(asJsonString(new BookingRequest()))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .accept(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(content().string("Staff/Venue ID invalid. Must be null or greater than 0"));
+        } catch (Exception e){
+        }
+    }
+
 
     @Test
     void deleteShouldReturnTrueWhenIDExists() {
@@ -191,6 +306,16 @@ class BookingsControllerTest {
         try{
             mockMvc.perform(delete(URI))
                     .andExpect(status().isNotFound());
+        } catch (Exception e){
+        }
+    }
+
+    @Test
+    void delete_ShouldReturnInvalidId_WhenIDLessThan() {
+        String URI = "http://localhost:" + port + "/api/bookings/-1";
+        try{
+            mockMvc.perform(delete(URI))
+                    .andExpect(status().isBadRequest());
         } catch (Exception e){
         }
     }

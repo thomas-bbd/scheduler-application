@@ -2,10 +2,13 @@ package com.training.schedulerapplication.services;
 
 import com.training.schedulerapplication.controllers.DeleteWithActiveStaffException;
 import com.training.schedulerapplication.controllers.StaffController;
+import com.training.schedulerapplication.controllers.VenuesController;
 import com.training.schedulerapplication.models.Booking;
 import com.training.schedulerapplication.models.Staff;
 import com.training.schedulerapplication.repositories.BookingRepository;
 import com.training.schedulerapplication.repositories.StaffRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.hateoas.CollectionModel;
@@ -23,6 +26,9 @@ import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
 
 @Service
 public class StaffService {
+
+    private static final Logger logger = LoggerFactory.getLogger(StaffService.class);
+
     @Autowired
     private StaffRepository staffRepository;
     @Autowired
@@ -37,21 +43,16 @@ public class StaffService {
                 linkTo(methodOn(StaffController.class).all()).withSelfRel()));
     }
 
-    public ResponseEntity<EntityModel<Staff>> get(Long id){
+    public Staff get(Long id){
         Optional<Staff> optionalStaff = staffRepository.findById(id);
-        if (optionalStaff.isPresent()) {
-            return optionalStaff
-                    .map(staff -> EntityModel.of(staff, //
-                            linkTo(methodOn(StaffController.class).get(staff.getId())).withSelfRel(), //
-                            linkTo(methodOn(StaffController.class).all()).withRel("staff"))) //
-                    .map(ResponseEntity::ok).get();
-        } else {
-            return null;
-        }
+        return optionalStaff.isPresent() ? optionalStaff.get() : null;
     }
 
     public Staff add(final Staff staff){
-        if(validStaff(staff)){
+        boolean validFirstName = staff.getFirst_name() != null;
+        boolean validLastName = staff.getLast_name() != null;
+        boolean validRole = staff.getRole() != null;
+        if(validFirstName && validLastName && validRole){
             return staffRepository.saveAndFlush(staff);
         } else {
             return null;
@@ -59,7 +60,7 @@ public class StaffService {
     }
 
     public boolean delete(Long id){
-        List<Booking> bookings = bookingRepository.findByVenueId(id);
+        List<Booking> bookings = bookingRepository.findByStaffId(id);
         if (bookings.size() == 0) {
             try {
                 staffRepository.deleteById(id);
@@ -72,10 +73,4 @@ public class StaffService {
         }
     }
 
-    private boolean validStaff(Staff staff){
-        return
-                staff.getFirst_name() != null && !staff.getFirst_name().equals("") &&
-                        staff.getLast_name() != null && !staff.getLast_name().equals("") &&
-                        staff.getRole() != null && !staff.getRole().equals("");
-    }
 }

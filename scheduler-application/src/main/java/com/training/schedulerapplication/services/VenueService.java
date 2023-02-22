@@ -38,22 +38,15 @@ public class VenueService {
                 linkTo(methodOn(VenuesController.class).all()).withSelfRel()));
     }
 
-    public ResponseEntity<EntityModel<Venue>> get(Long id){
+    public Venue get(Long id){
         Optional<Venue> optionalVenue = venueRepository.findById(id);
-        if (optionalVenue.isPresent()) {
-            return optionalVenue
-                    .map(venue -> EntityModel.of(venue, //
-                            linkTo(methodOn(VenuesController.class).get(venue.getId())).withSelfRel(), //
-                            linkTo(methodOn(VenuesController.class).all()).withRel("venues"))) //
-                    .map(ResponseEntity::ok).get();
-        } else {
-            return null;
-        }
+        return optionalVenue.isPresent() ? optionalVenue.get() : null;
     }
 
     public Venue add(final Venue venue){
-        if(venue.getRoom_name() != null && !venue.getRoom_name().equals("") &&
-        venue.getBuilding_name() != null && !venue.getBuilding_name().equals("")){
+        boolean validRoom = venue.getRoom_name() != null && !venue.getRoom_name().equals("");
+        boolean validBuilding = venue.getBuilding_name() != null && !venue.getBuilding_name().equals("");
+        if(validRoom && validBuilding){
             return venueRepository.saveAndFlush(venue);
         } else {
             return null;
