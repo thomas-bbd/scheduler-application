@@ -56,25 +56,25 @@ class VenuesControllerTest {
     }
 
     @Test
-    void allShouldReturnOk() {
+    void all_ShouldReturnOk() {
         ResponseEntity<String> response = this.restTemplate.getForEntity("http://localhost:" + port + "/api/venues", String.class);
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
     }
 
     @Test
-    void getShouldReturnOkForId_1() {
+    void get_ShouldReturnOk_WhenId1() {
         ResponseEntity<String> response = this.restTemplate.getForEntity("http://localhost:" + port + "/api/venues/1", String.class);
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
     }
 
     @Test
-    void getShouldReturnNotFoundForId_6() {
+    void get_ShouldReturnNotFound_WhenId6() {
         ResponseEntity<String> response = this.restTemplate.getForEntity("http://localhost:" + port + "/api/venues/7", String.class);
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     }
 
     @Test
-    void addShouldReturnBadRequestIfVenueNotPopulated() {
+    void add_ShouldReturnBadRequest_WhenVenueNotPopulated() {
         Mockito.when(venueService.add(any(Venue.class))).thenReturn(null);
         Venue venue = new Venue();
         venue.setBuilding_name("TestBuilding");
@@ -89,7 +89,7 @@ class VenuesControllerTest {
     }
 
     @Test
-    void addShouldReturnCreatedIfVenuePopulated() {
+    void add_ShouldReturnCreated_WhenVenuePopulated() {
         Venue venue = new Venue();
         venue.setBuilding_name("TestBuilding");
         venue.setRoom_name("TestRoom");
@@ -106,7 +106,7 @@ class VenuesControllerTest {
     }
 
     @Test
-    void deleteShouldReturnTrueWhenIDExists() {
+    void delete_ShouldReturnTrue_WhenIDExists() {
         Mockito.when(venueService.delete(any(Long.class))).thenReturn(true);
         String URI = "http://localhost:" + port + "/api/venues/1";
         try{
@@ -116,7 +116,7 @@ class VenuesControllerTest {
         }
     }
     @Test
-    void deleteShouldReturnTrueWhenIDoesNotExist() {
+    void delete_ShouldReturnTrue_WhenIDoesNotExist() {
         Mockito.when(venueService.delete(any(Long.class))).thenReturn(false);
         String URI = "http://localhost:" + port + "/api/venues/1";
         try{
@@ -127,7 +127,7 @@ class VenuesControllerTest {
     }
 
     @Test
-    void deleteShouldReturnThrowWhenStaffWithActiveBooking() {
+    void delete_ShouldThrow_WhenStaffWithActiveBooking() {
         Mockito.when(venueService.delete(any(Long.class))).thenThrow(new DeleteWithActiveVenueException(1L));
         String URI = "http://localhost:" + port + "/api/venues/1";
         try{

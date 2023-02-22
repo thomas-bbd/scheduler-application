@@ -65,13 +65,13 @@ class BookingsControllerTest {
     }
 
     @Test
-    void get_ShouldReturnOk_WhenId_1() {
+    void get_ShouldReturnOk_WhenId1() {
         ResponseEntity<String> response = this.restTemplate.getForEntity("http://localhost:" + port + "/api/bookings/1", String.class);
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
     }
 
     @Test
-    void get_ShouldReturnNotFound_WhenId_6() {
+    void get_ShouldReturnNotFound_WhenId6() {
         ResponseEntity<String> response = this.restTemplate.getForEntity("http://localhost:" + port + "/api/bookings/7", String.class);
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     }

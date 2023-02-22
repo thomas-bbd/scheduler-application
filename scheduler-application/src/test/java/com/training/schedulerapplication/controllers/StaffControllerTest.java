@@ -58,25 +58,25 @@ class StaffControllerTest {
     }
 
     @Test
-    void allShouldReturnOk() {
+    void all_ShouldReturnOk() {
         ResponseEntity<String> response = this.restTemplate.getForEntity("http://localhost:" + port + "/api/staff", String.class);
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
     }
 
     @Test
-    void getShouldReturnOkForId_1() {
+    void get_ShouldReturnOk_WhenId1() {
         ResponseEntity<String> response = this.restTemplate.getForEntity("http://localhost:" + port + "/api/staff/1", String.class);
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
     }
 
     @Test
-    void getShouldReturnNotFoundForId_6() {
+    void get_ShouldReturnNotFound_WhenId6() {
         ResponseEntity<String> response = this.restTemplate.getForEntity("http://localhost:" + port + "/api/staff/7", String.class);
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     }
 
     @Test
-    void addShouldReturnBadRequestIfStaffNotPopulated() {
+    void add_ShouldReturnBadRequest_WhenStaffNotPopulated() {
         Staff staff = new Staff();
         String URI = "http://localhost:" + port + "/api/staff";
         try{
@@ -89,7 +89,7 @@ class StaffControllerTest {
     }
 
     @Test
-    void addShouldReturnCreatedIfStaffPopulated() {
+    void add_ShouldReturnCreated_WhenStaffPopulated() {
         Staff staff = new Staff();
         staff.setFirst_name("TestFirstName");
         staff.setLast_name("TestLastName");
@@ -107,7 +107,7 @@ class StaffControllerTest {
     }
 
     @Test
-    void deleteShouldReturnTrueWhenIDExists() {
+    void delete_ShouldReturnTrue_WhenIDExists() {
         Mockito.when(staffService.delete(any(Long.class))).thenReturn(true);
         String URI = "http://localhost:" + port + "/api/staff/1";
         try{
@@ -117,7 +117,7 @@ class StaffControllerTest {
         }
     }
     @Test
-    void deleteShouldReturnTrueWhenIDoesNotExist() {
+    void delete_ShouldReturnTrue_WhenIDoesNotExist() {
         Mockito.when(staffService.delete(any(Long.class))).thenReturn(false);
         String URI = "http://localhost:" + port + "/api/staff/1";
         try{
@@ -128,7 +128,7 @@ class StaffControllerTest {
     }
 
     @Test
-    void deleteShouldReturnThrowWhenStaffWithActiveBooking() {
+    void delete_ShouldThrow_WhenStaffWithActiveBooking() {
         Mockito.when(staffService.delete(any(Long.class))).thenThrow(new DeleteWithActiveStaffException(1L));
         String URI = "http://localhost:" + port + "/api/staff/1";
         try{
