@@ -1,85 +1,133 @@
 package com.training.schedulerapplication.controllers;
 
+import com.training.schedulerapplication.services.VenueService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import org.slf4j.LoggerFactory;
 import org.slf4j.Logger;
 import com.training.schedulerapplication.models.Booking;
 import com.training.schedulerapplication.models.Venue;
-import com.training.schedulerapplication.repositories.BookingRepository;
-import com.training.schedulerapplication.repositories.VenueRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.hateoas.CollectionModel;
 import org.springframework.hateoas.EntityModel;
 import org.springframework.hateoas.IanaLinkRelations;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.List;
-import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
 
 @RestController
-@RequestMapping("/api/venues")
+@RequestMapping("api/venues")
 public class VenuesController {
     private static final Logger logger = LoggerFactory.getLogger(VenuesController.class);
+
     @Autowired
-    private VenueRepository venueRepository;
-    @Autowired
-    private BookingRepository bookingRepository;
-    @GetMapping
-    public ResponseEntity<CollectionModel<EntityModel<Venue>>> all(){
-        logger.info("/api/venues/all endpoint");
-        List<EntityModel<Venue>> venue = StreamSupport.stream(venueRepository.findAll().spliterator(), false) //
-                .map(currVenue -> EntityModel.of(currVenue, //
-                        linkTo(methodOn(BookingsController.class).get(currVenue.getVenue_id())).withSelfRel(), //
-                        linkTo(methodOn(BookingsController.class).all()).withRel("venues"))).collect(Collectors.toList());
-        return ResponseEntity.ok(CollectionModel.of(venue, //
-                linkTo(methodOn(StaffController.class).all()).withSelfRel()));
-    }
+    private VenueService venueService;
+
 
     @GetMapping
-    @RequestMapping("{id}")
-    public ResponseEntity<EntityModel<Venue>> get(@PathVariable Long id){
+    @Operation(summary = "All venues")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200",
+                    description = "All venues",
+                    content = {@Content(mediaType = "application/json",
+                            array = @ArraySchema(schema = @Schema(implementation = Venue.class)))})
+    })
+    public ResponseEntity<CollectionModel<EntityModel<Venue>>> all(){
+        logger.info("/api/venues/all endpoint");
+        return venueService.all();
+    }
+
+    @GetMapping("/{id}")
+    @Operation(summary = "Get a venue with a specific ID")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200",
+                    description = "Success - retrieved venue",
+                    content = {@Content(mediaType = "application/json",
+                            schema = @Schema(implementation = Venue.class))}),
+            @ApiResponse(responseCode = "404",
+                    description = "Not Found",
+                    content = {@Content(mediaType = "application/json")})
+    })
+    public ResponseEntity<?> get(@Parameter(description = "ID to get venue") @PathVariable Long id){
         logger.info("/api/venues/get/{} endpoint", id);
-        return venueRepository.findById(id) //
-                .map(venue -> EntityModel.of(venue, //
-                        linkTo(methodOn(BookingsController.class).get(venue.getVenue_id())).withSelfRel(), //
-                        linkTo(methodOn(BookingsController.class).all()).withRel("venues"))) //
-                .map(ResponseEntity::ok) //
-                .orElse(ResponseEntity.notFound().build());
+        Venue response = venueService.get(id);
+        if (response != null){
+            EntityModel<Venue> model = EntityModel.of(response, //
+                    linkTo(methodOn(VenuesController.class).get(response.getId())).withSelfRel(), //
+                    linkTo(methodOn(VenuesController.class).all()).withRel("venues"));
+            return new ResponseEntity<>(model, HttpStatus.OK);
+        } else {
+            logger.info("Could not find venue with ID={}", id);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new VenueNotFoundException(id).getMessage());
+        }
     }
 
     @PostMapping
-    public ResponseEntity<?> add(@RequestBody final Venue venue){
+    @Operation(summary = "Add a venue")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "201",
+                    description = "Created - added venue",
+                    content = {@Content(mediaType = "application/json",
+                            schema = @Schema(implementation = Booking.class))}),
+            @ApiResponse(responseCode = "400",
+                    description = "Bad request - venue was not complete",
+                    content = {@Content(mediaType = "application/json")})
+    })
+    public ResponseEntity<?> add(
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(description =
+                    "The venue to be added. ID is autogenerated.")
+            @RequestBody final Venue venue){
         logger.info("/api/venues/add endpoint for venue: {}", venue);
-        Venue newVenue =  venueRepository.saveAndFlush(venue);
-        EntityModel<Venue> venueResource = EntityModel.of(newVenue, linkTo(methodOn(BookingsController.class)
-                .get(newVenue.getVenue_id())).withSelfRel());
-        try{
-            return ResponseEntity.created(new URI(venueResource.getRequiredLink(IanaLinkRelations.SELF).getHref())) //
-                    .body(venueResource);
-        } catch (URISyntaxException e){
-            logger.error("Unable to update booking with URI error: {}", e.getMessage());
-            return ResponseEntity.badRequest().body("Unable to create venue");
-        }
-    }
-
-
-    @RequestMapping(name = "{id}", method = RequestMethod.DELETE)
-    public ResponseEntity<?> delete(@RequestBody Long id){
-        //Can't delete venue if there is a booking there
-        List<Booking> bookings = bookingRepository.findByVenueId(id);
-        if (bookings.size() == 0) { // venue not attached to any bookings
-            return venueRepository.findById(id).map(venue -> {
-                venueRepository.deleteById(id);
-                return ResponseEntity.noContent().build();
-            }).orElseThrow(() -> new VenueNotFoundException(id));
+        Venue newVenue = venueService.add(venue);
+        if (newVenue != null) {
+            EntityModel<Venue> venueResource = EntityModel.of(newVenue, linkTo(methodOn(VenuesController.class)
+                    .get(newVenue.getId())).withSelfRel());
+            try {
+                return ResponseEntity.created(new URI(venueResource
+                                .getRequiredLink(IanaLinkRelations.SELF).getHref())).body(venueResource);
+            } catch (URISyntaxException e) {
+                logger.error("Unable to update booking with URI error: {}", e.getMessage());
+                return ResponseEntity.badRequest().body("Unable to create venue");
+            }
         } else {
-            throw new DeleteWithActiveVenueException(id);
+            logger.warn("Could not insert Venue without all fields populated");
+            return ResponseEntity.badRequest().body("Provided venue was not complete.");
         }
     }
+
+
+    @DeleteMapping(value = "/{id}")
+    @Operation(summary = "Delete a venue")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200",
+                    description = "Deleted venue",
+                    content = {@Content(mediaType = "application/json")}),
+            @ApiResponse(responseCode = "404",
+                    description = "Not found - venue to be deleted could not be found",
+                    content = {@Content(mediaType = "application/json")})
+    })
+    public ResponseEntity<?> delete(@Parameter(description = "ID of venue to be deleted") @PathVariable Long id){
+        logger.info("/api/venues/delete/{} endpoint", id);
+        try{
+            if(venueService.delete(id)){
+                return ResponseEntity.ok("Successfully deleted venue with ID=" + id);
+            } else {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new VenueNotFoundException(id).getMessage());
+            }
+        } catch (DeleteWithActiveVenueException e){
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
 }

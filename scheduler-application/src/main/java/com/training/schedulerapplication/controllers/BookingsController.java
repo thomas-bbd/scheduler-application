@@ -1,143 +1,223 @@
 package com.training.schedulerapplication.controllers;
 
-import com.training.schedulerapplication.repositories.BookingRepository;
-import com.training.schedulerapplication.models.Booking;
+import com.training.schedulerapplication.models.*;
+import com.training.schedulerapplication.services.BookingsService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.hateoas.CollectionModel;
 import org.springframework.hateoas.EntityModel;
 import org.springframework.hateoas.IanaLinkRelations;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.hateoas.Link;
+
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.*;
 
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.List;
-import java.util.Optional;
-import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 
 @RestController
 @RequestMapping("/api/bookings")
 public class BookingsController {
     private static final Logger logger = LoggerFactory.getLogger(VenuesController.class);
     @Autowired
-    private BookingRepository bookingRepository;
+    private BookingsService bookingsService;
 
     @GetMapping
+    @Operation(summary = "All of the bookings")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200",
+                    description = "All bookings",
+                    content = {@Content(mediaType = "application/json",
+                            array = @ArraySchema(schema = @Schema(implementation = Booking.class)))})
+    })
     public ResponseEntity<CollectionModel<EntityModel<Booking>>> all(){
         logger.info("/api/bookings/all endpoint");
-        List<EntityModel<Booking>> bookings = StreamSupport.stream(bookingRepository.findAll().spliterator(), false) //
-                .map(booking -> EntityModel.of(booking, //
-                        linkTo(methodOn(BookingsController.class).get(booking.getId())).withSelfRel(), //
-                        linkTo(methodOn(BookingsController.class).all()).withRel("bookings"))).collect(Collectors.toList());
-        return ResponseEntity.ok(CollectionModel.of(bookings, //
-                linkTo(methodOn(BookingsController.class).all()).withSelfRel()));
+        return bookingsService.all();
     }
 
-    @GetMapping
-    @RequestMapping("{id}")
-    public ResponseEntity<EntityModel<Booking>> get(@PathVariable Long id){
+    @GetMapping("/{id}")
+    @Operation(summary = "Get a booking with a specific ID")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200",
+                    description = "Success - retrieved booking",
+                    content = {@Content(mediaType = "application/json", schema = @Schema(implementation = Booking.class))}),
+            @ApiResponse(responseCode = "404",
+                    description = "Not Found",
+                    content = {@Content(mediaType = "application/json")})
+    })
+    public ResponseEntity<?> get(@Parameter(description = "ID to get booking") @PathVariable Long id){
         logger.info("/api/bookings/get/{} endpoint", id);
-        return bookingRepository.findById(id) //
-                .map(booking -> EntityModel.of(booking, //
-                        linkTo(methodOn(BookingsController.class).get(booking.getId())).withSelfRel(), //
-                        linkTo(methodOn(BookingsController.class).all()).withRel("bookings"))) //
-                .map(ResponseEntity::ok) //
-                .orElse(ResponseEntity.notFound().build());
+        Booking response = bookingsService.get(id);
+        if (response != null){
+            EntityModel<Booking> model = EntityModel.of(response, //
+                    linkTo(methodOn(BookingsController.class).get(response.getId())).withSelfRel(), //
+                    linkTo(methodOn(BookingsController.class).all()).withRel("bookings"));
+            return new ResponseEntity<>(model, HttpStatus.OK);
+        } else {
+            logger.info("Could not find booking with ID={}", id);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new BookingNotFoundException(id).getMessage());
+        }
     }
 
     @PostMapping
-    public ResponseEntity<?> add(@RequestBody final Booking booking){
-        logger.info("/api/bookings/add endpoint for booking {} ", booking);
-        Booking newBooking =  bookingRepository.saveAndFlush(booking);
-        EntityModel<Booking> bookingResource = EntityModel.of(newBooking, linkTo(methodOn(BookingsController.class)
-                .get(newBooking.getId())).withSelfRel());
-        try{
-            return ResponseEntity.created(new URI(bookingResource.getRequiredLink(IanaLinkRelations.SELF).getHref())) //
-                    .body(bookingResource);
-        } catch (URISyntaxException e){
-            logger.error("Unable to update booking with URI error: {}", e.getMessage());
-            return ResponseEntity.badRequest().body("Unable to create booking");
+    @Operation(summary = "Add a booking")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "201",
+                    description = "Created - added booking",
+                    content = {@Content(mediaType = "application/json",
+                            schema = @Schema(implementation = Booking.class))}),
+            @ApiResponse(responseCode = "400",
+                    description = "Bad request",
+                    content = {@Content(mediaType = "application/json")})
+    })
+    public ResponseEntity<?> add(
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(description =
+                    "A request for adding a booking. ID is autogenerated.")
+            @RequestBody BookingRequest bookingRequest){
+        logger.info("/api/bookings/add endpoint for {} ", bookingRequest);
+        if (isBookingRequestFull(bookingRequest)) {
+            ResponseObject responseObject = bookingsService.add(bookingRequest);
+            if (!responseObject.hasError()) {
+                Booking newBooking = responseObject.getBooking();
+                EntityModel<Booking> bookingResource = EntityModel.of(newBooking, linkTo(methodOn(BookingsController.class)
+                        .get(newBooking.getId())).withSelfRel());
+                try {
+                    return ResponseEntity.created(new URI(bookingResource.getRequiredLink(IanaLinkRelations.SELF).getHref())) //
+                            .body(bookingResource);
+                } catch (URISyntaxException e) {
+                    logger.error("Unable to update booking with URI error: {}", e.getMessage());
+                    return ResponseEntity.badRequest().body("Unable to create booking");
+                }
+            } else {
+                return ResponseEntity.badRequest().body(responseObject.listErrors());
+            }
+        } else {
+            return ResponseEntity.badRequest().body("Booking request must be full with ID's greater than 0");
         }
+
     }
 
     @PutMapping("{id}")
-    public ResponseEntity<?> fullUpdate(@PathVariable Long id, @RequestBody Booking booking){
-        logger.info("/api/bookings/fullUpdate endpoint for ID: {}, booking {} ", id, booking);
-        boolean invalidBooking = false;
-        invalidBooking = booking.getId() == null || booking.getId() < 0 || booking.getStaff() == null
-                || booking.getBooking_length() == null || booking.getDescription() == null;
-        if(invalidBooking){
-            logger.warn("Provided booking does not have all fields filled: {}", booking);
-            return ResponseEntity.badRequest().body("Not all booking fields were filled. Cannot update. Use a PATCH request instead");
-        } else{
-            Optional<Booking> currentBooking = bookingRepository.findById(id);
-            if(!currentBooking.isPresent()){
-                logger.error("Cannot find booking with ID={} to be updated", id);
-                throw new BookingNotFoundException(id);
+    @Operation(summary = "Fully update a booking")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200",
+                    description = "Created - added booking",
+                    content = {@Content(mediaType = "application/json")}),
+            @ApiResponse(responseCode = "404",
+                    description = "Not found - either booking, venue, or staff member wasn't found",
+                    content = {@Content(mediaType = "application/json")})
+    })
+    public ResponseEntity<?> fullUpdate(@Parameter(description = "ID of booking to be updated") @PathVariable Long id,
+                                        @io.swagger.v3.oas.annotations.parameters.RequestBody(description =
+                                                "The new booking details. Must all be populated")
+                                        @RequestBody BookingRequest bookingRequest){
+        logger.info("/api/bookings/fullUpdate endpoint for ID: {}, {} ", id, bookingRequest.toString());
+        if(isBookingRequestFull(bookingRequest)) {
+            ResponseObject responseObject = bookingsService.fullUpdate(id, bookingRequest);
+            if (responseObject.hasError()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(responseObject.listErrors());
+            } else {
+                Link newLink = linkTo(methodOn(BookingsController.class).get(id)).withSelfRel();
+                try {
+                    return ResponseEntity.ok().location(new URI(newLink.getHref()))
+                            .body("Successfully updated booking with id=" + id);
+                } catch (URISyntaxException e) {
+                    logger.error("Unable to update booking with URI error: {}", e.getMessage());
+                    return ResponseEntity.badRequest().body("Unable to update booking with id: " + id);
+                }
             }
-            BeanUtils.copyProperties(booking, currentBooking.get(), "booking_id"); // Don't override primary key
-            bookingRepository.saveAndFlush(currentBooking.get());
-            Link newLink = linkTo(methodOn(BookingsController.class).get(id)).withSelfRel();
-            try{
-                return ResponseEntity.noContent().location(new URI(newLink.getHref())).build();
-            } catch (URISyntaxException e){
-                logger.error("Unable to update booking with URI error: {}", e.getMessage());
-                return ResponseEntity.badRequest().body("Unable to update booking with id: " + id);
-            }
+        } else {
+            return ResponseEntity.badRequest().body("Booking request must be full with ID's greater than 0");
         }
 
     }
 
-    @RequestMapping(name = "{id}", method = RequestMethod.PATCH)
-    public ResponseEntity<?> patchUpdate(@PathVariable Long id, @RequestBody Booking booking){
-        logger.info("/api/bookings/patchUpdate endpoint for ID: {}, booking {} ", id, booking);
-        Optional<Booking> currentBooking = bookingRepository.findById(id);
-        if(!currentBooking.isPresent()){
-            logger.error("Cannot find booking with ID={} to be updated", id);
-            throw new BookingNotFoundException(id);
-        }
-        if(booking.getDescription() != null){
-            currentBooking.get().setDescription(booking.getDescription());
-        }
-        if(booking.getBooking_length() != 0 && booking.getBooking_length() != null){
-            currentBooking.get().setBooking_length(booking.getBooking_length());
-        }
-        if(booking.getStaff() != null){
-            currentBooking.get().setStaff(booking.getStaff());
-        }
-        if(booking.getVenue() != null){
-            currentBooking.get().setVenue(booking.getVenue());
-        }
-//        if(booking.getVenueId() >= 0){
-//            currentBooking.setVenueId(booking.getVenueId());
-//        }
-        Link newLink = linkTo(methodOn(BookingsController.class).get(id)).withSelfRel();
-        try{
-            return ResponseEntity.noContent().location(new URI(newLink.getHref())).build();
-        } catch (URISyntaxException e){
-            logger.error("Unable to update booking with URI error: {}", e.getMessage());
-            return ResponseEntity.badRequest().body("Unable to update booking with id: " + id);
+    @PatchMapping("{id}")
+    @Operation(summary = "Partially update a booking")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200",
+                    description = "Created - added booking",
+                    content = {@Content(mediaType = "application/json")}),
+            @ApiResponse(responseCode = "404",
+                    description = "Not found - booking to be updated could not be found",
+                    content = {@Content(mediaType = "application/json")})
+    })
+    public ResponseEntity<?> patchUpdate(@Parameter(description = "ID of booking to be updated")
+                                         @PathVariable Long id,
+                                         @io.swagger.v3.oas.annotations.parameters.RequestBody(description =
+                                                 "The new booking details. Don't need to all be populated")
+                                         @RequestBody BookingRequest bookingRequest){
+        logger.info("/api/bookings/patchUpdate endpoint for ID: {}, {}", id, bookingRequest);
+        if (id > 0) {
+            boolean validVenueId = bookingRequest.getVenue_id() == null || bookingRequest.getVenue_id() > 0;
+            boolean validStaffId = bookingRequest.getStaff_id() == null || bookingRequest.getStaff_id() > 0;
+            if (validStaffId && validVenueId) {
+                ResponseObject responseObject = bookingsService.patchUpdate(id, bookingRequest);
+                if (!responseObject.hasError()) {
+                    Link newLink = linkTo(methodOn(BookingsController.class).get(id)).withSelfRel();
+                    try {
+                        return ResponseEntity.ok().location(new URI(newLink.getHref()))
+                                .body("Successfully updated booking with id=" + id);
+                    } catch (URISyntaxException e) {
+                        logger.error("Unable to update booking with URI error: {}", e.getMessage());
+                        return ResponseEntity.badRequest().body("Unable to update booking with id: " + id);
+                    }
+                } else {
+                    logger.error("Cannot find booking with ID={} to be updated", id);
+                    return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Booking " + id + " does not exist");
+                }
+            } else {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body("Staff/Venue ID invalid. Must be null or greater than 0");
+            }
+        } else {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("ID must be greater than 0");
         }
     }
 
-    @RequestMapping(name = "{id}", method = RequestMethod.DELETE)
-    public ResponseEntity<?> delete(@RequestParam Long id){
+    @DeleteMapping("/{id}")
+    @Operation(summary = "Delete a booking")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200",
+                    description = "Deleted booking",
+                    content = {@Content(mediaType = "application/json")}),
+            @ApiResponse(responseCode = "404",
+                    description = "Not found - booking to be deleted could not be found",
+                    content = {@Content(mediaType = "application/json")})
+    })
+    public ResponseEntity<?> delete(@Parameter(description = "ID of booking to be deleted") @PathVariable Long id){
         logger.info("/api/bookings/delete/{} endpoint", id);
-        return bookingRepository.findById(id).map(booking -> {
-            logger.info("Deleting booking: {}", booking);
-            bookingRepository.deleteById(id);
-            logger.info("Deleted booking");
-            return ResponseEntity.noContent().build();
-        }).orElseThrow(() -> {
-            logger.error("Booking does not exist - cannot delete");
-            return new BookingNotFoundException(id);
-        });
+        if (id > 0) {
+            ResponseObject responseObject = bookingsService.delete(id);
+            if (!responseObject.hasError()) {
+                return ResponseEntity.ok("Successfully deleted booking with id=" + id);
+            } else {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Booking " + id + " does not exist");
+            }
+        } else {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("ID must be greater than 0");
+        }
+    }
+
+    private boolean isBookingRequestFull(BookingRequest bookingRequest){
+        return bookingRequest.getBooking_length() != null
+                && bookingRequest.getBooking_length() > 0
+                && bookingRequest.getDescription() != null
+                && !bookingRequest.getDescription().equals("")
+                && bookingRequest.getVenue_id() != null
+                && bookingRequest.getVenue_id() > 0
+                && bookingRequest.getStaff_id() != null
+                && bookingRequest.getStaff_id() > 0;
     }
 
 }

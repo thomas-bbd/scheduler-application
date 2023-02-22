@@ -2,84 +2,137 @@ package com.training.schedulerapplication.controllers;
 
 import com.training.schedulerapplication.models.Booking;
 import com.training.schedulerapplication.models.Staff;
-import com.training.schedulerapplication.repositories.BookingRepository;
-import com.training.schedulerapplication.repositories.StaffRepository;
+import com.training.schedulerapplication.models.Venue;
+import com.training.schedulerapplication.services.StaffService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.hateoas.CollectionModel;
 import org.springframework.hateoas.EntityModel;
 import org.springframework.hateoas.IanaLinkRelations;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.List;
-import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
 
 @RestController
+@RequestMapping("/api/staff")
 public class StaffController {
-    private static final Logger logger = LoggerFactory.getLogger(VenuesController.class);
-    @Autowired
-    private StaffRepository staffRepository;
-    @Autowired
-    private BookingRepository bookingRepository;
+    private static final Logger logger = LoggerFactory.getLogger(StaffController.class);
 
-    @GetMapping("api/staff")
+    @Autowired
+    private StaffService staffService;
+
+    @GetMapping
+    @Operation(summary = "All staff members")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200",
+                    description = "All staff members",
+                    content = {@Content(mediaType = "application/json",
+                            array = @ArraySchema(schema = @Schema(implementation = Staff.class)))})
+    })
     public ResponseEntity<CollectionModel<EntityModel<Staff>>> all(){
         logger.info("/api/staff/all endpoint");
-        List<EntityModel<Staff>> staff = StreamSupport.stream(staffRepository.findAll().spliterator(), false) //
-                .map(currStaff -> EntityModel.of(currStaff, //
-                        linkTo(methodOn(BookingsController.class).get(currStaff.getId())).withSelfRel(), //
-                        linkTo(methodOn(BookingsController.class).all()).withRel("staff"))).collect(Collectors.toList());
-        return ResponseEntity.ok(CollectionModel.of(staff, //
-                linkTo(methodOn(StaffController.class).all()).withSelfRel()));
+        return staffService.all();
     }
 
-    @GetMapping("api/staff/{id}")
-    public ResponseEntity<EntityModel<Staff>> get(@PathVariable Long id){
+    @GetMapping("/{id}")
+    @Operation(summary = "Get a staff member with a specific ID")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200",
+                    description = "Success - retrieved staff member",
+                    content = {@Content(mediaType = "application/json",
+                            schema = @Schema(implementation = Staff.class))}),
+            @ApiResponse(responseCode = "404",
+                    description = "Not Found",
+                    content = {@Content(mediaType = "application/json")})
+    })
+    public ResponseEntity<?> get(@Parameter(description = "ID to get staff") @PathVariable Long id){
         logger.info("/api/staff/get/{} endpoint", id);
-        return staffRepository.findById(id) //
-                .map(staff -> EntityModel.of(staff, //
-                        linkTo(methodOn(BookingsController.class).get(staff.getId())).withSelfRel(), //
-                        linkTo(methodOn(BookingsController.class).all()).withRel("staff"))) //
-                .map(ResponseEntity::ok) //
-                .orElse(ResponseEntity.notFound().build());
-    }
-
-    @PostMapping("api/staff")
-    public ResponseEntity<?> add(@RequestBody final Staff staff){
-        logger.info("/api/staff/add endpoint to add staff member {}", staff);
-        Staff newStaff =  staffRepository.saveAndFlush(staff);
-        EntityModel<Staff> staffResource = EntityModel.of(newStaff, linkTo(methodOn(StaffController.class)
-                .get(newStaff.getId())).withSelfRel());
-        try{
-            return ResponseEntity.created(new URI(staffResource.getRequiredLink(IanaLinkRelations.SELF).getHref())) //
-                    .body(staffResource);
-        } catch (URISyntaxException e){
-            logger.error("Unable to update booking with URI error: {}", e.getMessage());
-            return ResponseEntity.badRequest().body("Unable to create new staff member");
-        }
-    }
-
-    @RequestMapping(name = "api/staff/{id}", method = RequestMethod.DELETE)
-    public ResponseEntity<?> delete(@RequestParam Long id){
-        logger.info("/api/staff/delete/{} endpoint", id);
-        List<Booking> bookings = bookingRepository.findByStaffId(id);
-        if (bookings.size() == 0) { // staff member does not have any bookings
-            return staffRepository.findById(id).map(staff -> {
-                staffRepository.deleteById(id);
-                return ResponseEntity.noContent().build();
-            }).orElseThrow(() -> new StaffNotFoundException(id));
+        Staff response = staffService.get(id);
+        if (response != null){
+            EntityModel<Staff> model = EntityModel.of(response, //
+                    linkTo(methodOn(StaffController.class).get(response.getId())).withSelfRel(), //
+                    linkTo(methodOn(StaffController.class).all()).withRel("staff"));
+            return new ResponseEntity<>(model, HttpStatus.OK);
         } else {
-            logger.error("Staff member has the following bookings associated with them. Cannot delete. Bookings: {}", bookings);
-            throw new DeleteWithActiveStaffException(id);
+            logger.info("Could not find staff with ID={}", id);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new VenueNotFoundException(id).getMessage());
         }
     }
+
+    @PostMapping
+    @Operation(summary = "Add a staff member")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "201",
+                    description = "Created - added booking",
+                    content = {@Content(mediaType = "application/json",
+                            schema = @Schema(implementation = Booking.class))}),
+            @ApiResponse(responseCode = "400",
+                    description = "Bad request - staff member was not complete.",
+                    content = {@Content(mediaType = "application/json")})
+    })
+    public ResponseEntity<?> add(
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(description =
+                    "The staff member to be added. ID is autogenerated.")
+            @RequestBody final Staff staff){
+        logger.info("/api/staff/add endpoint to add staff member {}", staff.toString());
+        Staff newStaff = null;
+        if(!(staff.getFirst_name().equals("") || staff.getLast_name().equals("") || staff.getRole().equals(""))){
+            newStaff = staffService.add(staff);
+        }
+        if(newStaff != null){
+            EntityModel<Staff> staffResource = EntityModel.of(newStaff, linkTo(methodOn(StaffController.class)
+                    .get(newStaff.getId())).withSelfRel());
+            try{
+                return ResponseEntity.created(new URI(staffResource.getRequiredLink(IanaLinkRelations.SELF).getHref())) //
+                        .body(staffResource);
+            } catch (URISyntaxException e){
+                logger.error("Unable to update booking with URI error: {}", e.getMessage());
+                return ResponseEntity.badRequest().body("Unable to create new staff member");
+            }
+        } else {
+            logger.warn("Could not insert Staff member without all fields populated");
+            return ResponseEntity.badRequest().body("Provided Staff member was not complete.");
+        }
+
+    }
+
+    @DeleteMapping("/{id}")
+    @Operation(summary = "Delete a staff member")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200",
+                    description = "Deleted staff",
+                    content = {@Content(mediaType = "application/json")}),
+            @ApiResponse(responseCode = "404",
+                    description = "Not found - staff member to be deleted could not be found",
+                    content = {@Content(mediaType = "application/json")})
+    })
+    public ResponseEntity<?> delete(@Parameter(description = "ID of staff member to be deleted") @PathVariable Long id){
+        logger.info("/api/staff/delete/{} endpoint", id);
+        try{
+            if(staffService.delete(id)){
+                return ResponseEntity.ok("Successfully deleted staff with ID=" + id);
+            } else {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new StaffNotFoundException(id).getMessage());
+            }
+        } catch (DeleteWithActiveStaffException e){
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+
 }
