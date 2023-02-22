@@ -23,6 +23,9 @@ import org.springframework.web.bind.annotation.*;
 
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
@@ -43,7 +46,12 @@ public class VenuesController {
     })
     public ResponseEntity<CollectionModel<EntityModel<Venue>>> all(){
         logger.info("/api/venues/all endpoint");
-        return venueService.all();
+        List<EntityModel<Venue>> venues = StreamSupport.stream(venueService.all().spliterator(), false)
+                .map(venue -> EntityModel.of(
+                        venue,
+                        createSelfHateoasLinkGet(venue.getId()),
+                        createSelfHateoasLinkAllWithRel())).collect(Collectors.toList());
+        return ResponseEntity.ok(CollectionModel.of(venues, createSelfHateoasLinkAll()));
     }
 
     @GetMapping("/{id}")
@@ -57,8 +65,8 @@ public class VenuesController {
         Venue response = venueService.get(id);
         if (response != null){
             EntityModel<Venue> model = EntityModel.of(response, //
-                    createSelfHateoasLink(response.getId()), //
-                    linkTo(methodOn(VenuesController.class).all()).withRel("venues"));
+                    createSelfHateoasLinkGet(response.getId()), //
+                    createSelfHateoasLinkAllWithRel());
             return new ResponseEntity<>(model, HttpStatus.OK);
         } else {
             logger.info("Could not find venue with ID={}", id);
@@ -78,7 +86,7 @@ public class VenuesController {
         logger.info("/api/venues/add endpoint for venue: {}", venue);
         Venue newVenue = venueService.add(venue);
         if (newVenue != null) {
-            EntityModel<Venue> venueResource = EntityModel.of(newVenue, createSelfHateoasLink(newVenue.getId()));
+            EntityModel<Venue> venueResource = EntityModel.of(newVenue, createSelfHateoasLinkGet(newVenue.getId()));
             try {
                 return ResponseEntity.created(new URI(venueResource.getRequiredLink(IanaLinkRelations.SELF).getHref())).body(venueResource);
             } catch (URISyntaxException e) {
@@ -111,8 +119,16 @@ public class VenuesController {
         }
     }
 
-    private Link createSelfHateoasLink(Long id){
-        return linkTo(methodOn(BookingsController.class).get(id)).withSelfRel();
+    private Link createSelfHateoasLinkGet(Long id){
+        return linkTo(methodOn(VenuesController.class).get(id)).withSelfRel();
+    }
+
+    private Link createSelfHateoasLinkAll(){
+        return linkTo(methodOn(VenuesController.class).all()).withSelfRel();
+    }
+
+    private Link createSelfHateoasLinkAllWithRel(){
+        return linkTo(methodOn(VenuesController.class).all()).withRel("venues");
     }
 
 }
