@@ -1,0 +1,15 @@
+spring:
+    datasource:
+        driverClassName: org.h2.Driver
+        password: ''
+        url: jdbc:h2:file:~/schedulerdb;AUTO_SERVER=TRUE
+        username: sa
+    h2:
+        console:
+            enabled: false
+    jpa:
+        database-platform: org.hibernate.dialect.H2Dialect
+        defer-datasource-initialization: true
+    sql:
+        init:
+            mode: always
